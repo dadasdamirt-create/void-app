@@ -7,7 +7,12 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --main-color: #fff; --bg-color: #000; --accent: #222; }
-        body { background-color: var(--bg-color); color: var(--main-color); margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; user-select: none; }
+        body { 
+            background-color: var(--bg-color); color: var(--main-color); margin: 0; 
+            display: flex; flex-direction: column; align-items: center; 
+            height: 100vh; font-family: -apple-system, system-ui, sans-serif; 
+            overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent;
+        }
         
         #global-container { margin-top: 40px; text-align: center; opacity: 0.5; letter-spacing: 2px; font-size: 0.65rem; }
         #global-matter { display: block; font-size: 0.8rem; margin-top: 5px; color: #aaa; }
@@ -16,8 +21,8 @@
         #level-container { width: 80%; height: 4px; background: #111; margin-top: 20px; border-radius: 2px; overflow: hidden; }
         #level-bar { width: 0%; height: 100%; background: var(--main-color); transition: width 0.3s ease; box-shadow: 0 0 10px #fff; }
 
-        /* Сфера с анимацией */
-        #sphere-wrapper { position: relative; margin-top: 40px; }
+        /* Сфера */
+        #sphere-wrapper { position: relative; margin-top: 40px; z-index: 10; }
         #void-sphere { 
             width: 200px; height: 200px; 
             background: radial-gradient(circle, #151515 0%, #000 75%); 
@@ -28,15 +33,16 @@
         }
         #void-sphere:active { transform: scale(0.92); border-color: #444; }
 
-        #balance { font-size: 3.2rem; margin-top: 20px; font-weight: 200; font-variant-numeric: tabular-nums; }
-        .label { color: #444; font-size: 0.6rem; letter-spacing: 4px; margin-bottom: 30px; }
+        #balance { font-size: 3rem; margin-top: 20px; font-weight: 200; font-variant-numeric: tabular-nums; }
+        .label { color: #444; font-size: 0.6rem; letter-spacing: 4px; margin-bottom: 20px; }
 
-        .btn-panel { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 90%; margin-top: auto; padding-bottom: 40px; }
-        .ui-btn { background: #0a0a0a; border: 1px solid #1a1a1a; color: #eee; padding: 12px; border-radius: 12px; flex: 1; min-width: 80px; text-align: center; cursor: pointer; font-size: 0.6rem; transition: background 0.2s; }
+        /* Панель кнопок */
+        .btn-panel { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 90%; margin-top: auto; padding-bottom: 40px; z-index: 20; }
+        .ui-btn { background: #0a0a0a; border: 1px solid #1a1a1a; color: #eee; padding: 12px; border-radius: 12px; flex: 1; min-width: 80px; text-align: center; cursor: pointer; font-size: 0.6rem; }
         .ui-btn:active { background: #151515; }
         .cost { color: #555; display: block; font-size: 0.5rem; margin-top: 4px; }
 
-        /* Эффекты */
+        /* Эффекты вылетающих частиц */
         .particle { position: fixed; pointer-events: none; background: #fff; border-radius: 50%; z-index: 100; }
         @keyframes particle-fly {
             0% { transform: translate(0,0) scale(1); opacity: 1; }
@@ -44,6 +50,7 @@
         }
         @keyframes flyUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-120px); opacity: 0; } }
 
+        /* Окна (Модалки) */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 200; padding-top: 60px; text-align: center; }
         .quest-card { background: #080808; border: 1px solid #111; margin: 10px 20px; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
     </style>
@@ -51,7 +58,6 @@
 <body>
 
     <div id="global-container">THE UNIVERSE REMAINS<span id="global-matter">1000.0000</span></div>
-    
     <div id="level-container"><div id="level-bar"></div></div>
 
     <div id="sphere-wrapper">
@@ -71,7 +77,7 @@
     <div id="leaderboard" class="modal">
         <div style="letter-spacing: 5px; opacity: 0.3; margin-bottom: 30px;">RANKINGS</div>
         <div id="leader-list"></div>
-        <div class="ui-btn" onclick="toggleModal('leaderboard')" style="width: 100px; margin-top: 40px;">BACK</div>
+        <div class="ui-btn" onclick="toggleModal('leaderboard')" style="width: 100px; margin: 40px auto 0;">BACK</div>
     </div>
 
     <div id="rewards" class="modal">
@@ -91,14 +97,13 @@
             <div class="ui-btn" onclick="completeQuest('invite_3')" style="min-width: 60px;">CHECK</div>
         </div>
         <div class="ui-btn" onclick="inviteFriend()" style="width: 80%; margin: 20px auto;">INVITE FRIENDS</div>
-        <div class="ui-btn" onclick="toggleModal('rewards')" style="width: 100px; margin-top: 20px;">BACK</div>
+        <div class="ui-btn" onclick="toggleModal('rewards')" style="width: 100px; margin: 20px auto 0;">BACK</div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
+        tg.ready();
         tg.expand();
-        tg.backgroundColor = '#000000';
-        tg.headerColor = '#000000';
 
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
         const userName = tg.initDataUnsafe?.user?.first_name || 'Guest';
@@ -107,7 +112,7 @@
         let currentBalance = 0;
         let autoPower = 0;
 
-        // Создание частиц
+        // Эффект частиц
         function createParticles(x, y) {
             for (let i = 0; i < 8; i++) {
                 const p = document.createElement('div');
@@ -118,17 +123,18 @@
                 p.style.left = x + 'px';
                 p.style.top = y + 'px';
                 
-                const tx = (Math.random() - 0.5) * 200;
-                const ty = (Math.random() - 0.5) * 200;
+                const tx = (Math.random() - 0.5) * 160;
+                const ty = (Math.random() - 0.5) * 160;
                 p.style.setProperty('--x', tx + 'px');
                 p.style.setProperty('--y', ty + 'px');
-                p.style.animation = 'particle-fly 0.8s ease-out forwards';
+                p.style.animation = 'particle-fly 0.6s ease-out forwards';
                 
                 document.body.appendChild(p);
-                setTimeout(() => p.remove(), 800);
+                setTimeout(() => p.remove(), 600);
             }
         }
 
+        // Основной запрос данных
         async function apiRequest(action = 'load') {
             try {
                 const res = await fetch('/api/click', {
@@ -137,6 +143,7 @@
                     body: JSON.stringify({ userId, userName, action, referrerId })
                 });
                 const data = await res.json();
+                
                 currentBalance = data.balance;
                 autoPower = data.autoPower || 0;
                 
@@ -144,43 +151,115 @@
                 document.getElementById('global-matter').innerText = data.globalMatter.toFixed(4);
                 document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
                 document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
-                document.getElementById('ref-count').innerText = `Friends: ${data.referralCount}/3`;
+                document.getElementById('ref-count').innerText = `Friends: ${data.referralCount || 0}/3`;
 
-                // Обновление прогресс-бара (условно до 1000 кликов на уровень)
-                const progress = (data.balance * 100) % 100;
+                const progress = (currentBalance * 500) % 100; 
                 document.getElementById('level-bar').style.width = progress + '%';
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("API Error:", e); }
         }
 
-        // Клик
+        // Клик по сфере
         document.getElementById('void-sphere').onclick = (e) => {
             createParticles(e.clientX, e.clientY);
-            
             const flyText = document.createElement('div');
             flyText.innerText = '+';
             flyText.style.position = 'fixed'; flyText.style.left = e.clientX + 'px'; flyText.style.top = e.clientY + 'px';
-            flyText.style.animation = 'flyUp 1s forwards'; document.body.appendChild(flyText);
+            flyText.style.color = '#fff'; flyText.style.animation = 'flyUp 1s forwards';
+            document.body.appendChild(flyText);
             setTimeout(() => flyText.remove(), 1000);
 
             tg.HapticFeedback.impactOccurred('light');
-            currentBalance += 0.0001;
+            currentBalance += 0.0001; 
             document.getElementById('balance').innerText = currentBalance.toFixed(4);
             apiRequest('click');
         };
 
-        // Остальные функции (buyUpgrade, toggleModal, loadLeaderboard, claimDaily, completeQuest, inviteFriend)
-        // Скопируй их из своего прошлого кода index.html без изменений
         async function buyUpgrade(type) {
-            const res = await fetch('/api/upgrade', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, type })
-            });
-            const data = await res.json();
-            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); apiRequest('load'); }
-            else tg.showAlert(data.message);
+            try {
+                const res = await fetch('/api/upgrade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, type })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                    apiRequest('load');
+                } else {
+                    tg.showAlert(data.message);
+                }
+            } catch (e) { console.error(e); }
         }
 
         function toggleModal(id) {
             const el = document.getElementById(id);
-            el.style.display = (el.style.display === 'block') ? 'n
+            const isVisible = el.style.display === 'block';
+            el.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible && id === 'leaderboard') loadLeaderboard();
+        }
+
+        async function loadLeaderboard() {
+            try {
+                const res = await fetch('/api/leaderboard');
+                const leaders = await res.json();
+                document.getElementById('leader-list').innerHTML = leaders.map((p, i) => `
+                    <div style="display:flex; justify-content:space-between; width: 85%; margin: 10px auto; padding:10px; border-bottom:1px solid #111; font-size: 0.8rem; font-family: monospace;">
+                        <span>${i+1}. ${p.name}</span><span>${p.balance.toFixed(4)}</span>
+                    </div>`).join('');
+            } catch (e) { console.error(e); }
+        }
+
+        async function claimDaily() {
+            try {
+                const res = await fetch('/api/daily-bonus', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    tg.showAlert(`Bonus +${data.amount.toFixed(4)}!`);
+                    apiRequest('load');
+                } else tg.showAlert(data.message);
+            } catch (e) { console.error(e); }
+        }
+
+        async function completeQuest(questId) {
+            try {
+                const res = await fetch('/api/complete-quest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, questId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    tg.showAlert('Quest completed!');
+                    apiRequest('load');
+                } else tg.showAlert(data.message);
+            } catch (e) { console.error(e); }
+        }
+
+        function inviteFriend() {
+            const botUsername = 'void_clicker_bot'; // <--- ЗАМЕНИ НА СВОЕГО БОТА
+            const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
+            const shareText = `Join me in extracting The Void! 🌑`;
+            const fullUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
+            tg.openTelegramLink(fullUrl);
+        }
+
+        // Авто-баланс раз в секунду
+        setInterval(() => {
+            if (autoPower > 0) {
+                currentBalance += autoPower;
+                document.getElementById('balance').innerText = currentBalance.toFixed(4);
+            }
+        }, 1000);
+
+        // Синхронизация раз в 15 секунд
+        setInterval(() => apiRequest('load'), 15000);
+
+        // Запуск
+        apiRequest('load');
+    </script>
+</body>
+</html>
