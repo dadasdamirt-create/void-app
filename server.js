@@ -9,7 +9,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const MONGO_URI = process.env.MONGO_URI; 
 mongoose.connect(MONGO_URI).then(() => console.log("БАЗА ПОДКЛЮЧЕНА"));
 
-// ОБНОВЛЕННАЯ МОДЕЛЬ
+// МОДЕЛЬ ИГРОКА
 const playerSchema = new mongoose.Schema({
     userId: { type: String, unique: true },
     name: String,
@@ -18,10 +18,10 @@ const playerSchema = new mongoose.Schema({
     autoLevel: { type: Number, default: 0 },
     lastCheck: { type: Number, default: Date.now },
     lastClickTime: { type: Number, default: 0 },
-    // Поля для квестов и бонусов
     streak: { type: Number, default: 0 },
     lastBonusClaim: { type: Date, default: null },
-    completedQuests: { type: [String], default: [] }
+    completedQuests: { type: [String], default: [] },
+    referralCount: { type: Number, default: 0 } // Счетчик рефералов
 });
 const Player = mongoose.model('Player', playerSchema);
 
@@ -36,9 +36,9 @@ async function getGlobalState() {
     return state;
 }
 
+// Функция расчета стоимости (важно: должна быть одинаковой везде)
 const getUpgradeCost = (base, level) => base * Math.pow(1.5, level);
 
-// --- API ДЛЯ КЛИКОВ И СИНХРОНИЗАЦИИ ---
 app.post('/api/click', async (req, res) => {
     try {
         const { userId, userName, action, referrerId } = req.body;
@@ -48,9 +48,15 @@ app.post('/api/click', async (req, res) => {
 
         if (!player) {
             player = new Player({ userId, name: userName || 'Unknown', lastCheck: now });
+            // Если пришел по рефералке
             if (referrerId && referrerId !== userId) {
-                await Player.updateOne({ userId: referrerId }, { $inc: { balance: 0.0100 } });
-                state.globalMatter -= 0.0100;
+                const referrer = await Player.findOne({ userId: referrerId });
+                if (referrer) {
+                    referrer.balance += 0.0100;
+                    referrer.referralCount += 1; // Увеличиваем счетчик у того, кто пригласил
+                    await referrer.save();
+                    state.globalMatter -= 0.0100;
+                }
             }
         }
 
@@ -73,47 +79,80 @@ app.post('/api/click', async (req, res) => {
 
         await player.save();
         await state.save();
-        res.json({ balance: player.balance, globalMatter: state.globalMatter, autoPower, nextClickCost: getUpgradeCost(0.0050, player.clickLevel - 1), nextAutoCost: getUpgradeCost(0.0100, player.autoLevel) });
+        res.json({ 
+            balance: player.balance, 
+            globalMatter: state.globalMatter, 
+            autoPower, 
+            clickLevel: player.clickLevel,
+            autoLevel: player.autoLevel,
+            referralCount: player.referralCount,
+            nextClickCost: getUpgradeCost(0.0050, player.clickLevel - 1), 
+            nextAutoCost: getUpgradeCost(0.0100, player.autoLevel) 
+        });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// --- API: ЕЖЕДНЕВНЫЙ БОНУС ---
+// ИСПРАВЛЕННЫЙ АПГРЕЙД
+app.post('/api/upgrade', async (req, res) => {
+    const { userId, type } = req.body;
+    const player = await Player.findOne({ userId });
+    if (!player) return res.json({ success: false });
+
+    let cost = 0;
+    if (type === 'click') {
+        cost = getUpgradeCost(0.0050, player.clickLevel - 1);
+        if (player.balance >= cost) {
+            player.balance -= cost;
+            player.clickLevel += 1;
+        } else return res.json({ success: false, message: "Недостаточно материи" });
+    } else if (type === 'auto') {
+        cost = getUpgradeCost(0.0100, player.autoLevel);
+        if (player.balance >= cost) {
+            player.balance -= cost;
+            player.autoLevel += 1;
+        } else return res.json({ success: false, message: "Недостаточно материи" });
+    }
+
+    await player.save();
+    res.json({ success: true, balance: player.balance });
+});
+
 app.post('/api/daily-bonus', async (req, res) => {
     const { userId } = req.body;
     const player = await Player.findOne({ userId });
     if (!player) return res.json({ success: false });
-
     const now = new Date();
     const lastClaim = player.lastBonusClaim ? new Date(player.lastBonusClaim) : null;
-    
-    // Проверка: прошел ли день?
-    const isToday = lastClaim && lastClaim.toDateString() === now.toDateString();
-    if (isToday) return res.json({ success: false, message: "Приходи завтра!" });
-
-    // Проверка серии (было ли вчера?)
-    const oneDayInMs = 24 * 60 * 60 * 1000;
-    const isConsecutive = lastClaim && (now - lastClaim) < (oneDayInMs * 2);
-
+    if (lastClaim && lastClaim.toDateString() === now.toDateString()) return res.json({ success: false, message: "Приходи завтра!" });
+    const isConsecutive = lastClaim && (now - lastClaim) < (48 * 60 * 60 * 1000);
     player.streak = isConsecutive ? (player.streak + 1) : 1;
-    if (player.streak > 7) player.streak = 1; // Цикл 7 дней
-
-    const bonusAmount = 0.0010 * player.streak; // Бонус растет с каждым днем
+    if (player.streak > 7) player.streak = 1;
+    const bonusAmount = 0.0010 * player.streak;
     player.balance += bonusAmount;
     player.lastBonusClaim = now;
-    
     await player.save();
     res.json({ success: true, balance: player.balance, streak: player.streak, amount: bonusAmount });
 });
 
-// --- API: КВЕСТЫ ---
+// КВЕСТ НА ИНВАЙТ
 app.post('/api/complete-quest', async (req, res) => {
     const { userId, questId } = req.body;
     const player = await Player.findOne({ userId });
     if (!player || player.completedQuests.includes(questId)) return res.json({ success: false, message: "Уже выполнено" });
 
-    const rewards = { "sub_tg": 0.0500, "invite_3": 0.1500 }; // Награды за квесты
-    const reward = rewards[questId];
+    if (questId === 'invite_3') {
+        if (player.referralCount >= 3) {
+            player.balance += 0.1500;
+            player.completedQuests.push(questId);
+            await player.save();
+            return res.json({ success: true, balance: player.balance });
+        } else {
+            return res.json({ success: false, message: `Нужно 3 друга, у тебя: ${player.referralCount}` });
+        }
+    }
 
+    const rewards = { "sub_tg": 0.0500 };
+    const reward = rewards[questId];
     if (reward) {
         player.balance += reward;
         player.completedQuests.push(questId);
