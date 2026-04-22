@@ -1,94 +1,112 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
+const mongoose = require('mongoose');
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const DB_FILE = './database.json';
-let players = {};
-let globalMatter = 1000.0000;
+// 1. ПОДКЛЮЧЕНИЕ К БАЗЕ
+// Мы берем ссылку из переменных окружения Render для безопасности
+const MONGO_URI = process.env.MONGO_URI; 
 
-if (fs.existsSync(DB_FILE)) {
-    try {
-        const data = JSON.parse(fs.readFileSync(DB_FILE));
-        players = data.players || {};
-        globalMatter = data.globalMatter !== undefined ? data.globalMatter : 1000.0000;
-    } catch (e) { console.log("DB Error"); }
+mongoose.connect(MONGO_URI)
+    .then(() => console.log("БАЗА ДАННЫХ ПОДКЛЮЧЕНА"))
+    .catch(err => console.error("ОШИБКА БАЗЫ:", err));
+
+// 2. ОПИСАНИЕ МОДЕЛИ ИГРОКА
+const playerSchema = new mongoose.Schema({
+    userId: { type: String, unique: true },
+    name: String,
+    balance: { type: Number, default: 0 },
+    clickPower: { type: Number, default: 0.0001 },
+    autoPower: { type: Number, default: 0 },
+    lastCheck: { type: Number, default: Date.now }
+});
+const Player = mongoose.model('Player', playerSchema);
+
+// 3. СХЕМА ДЛЯ ГЛОБАЛЬНОЙ МАТЕРИИ
+const stateSchema = new mongoose.Schema({
+    key: { type: String, default: "global" },
+    globalMatter: { type: Number, default: 1000.0000 }
+});
+const State = mongoose.model('State', stateSchema);
+
+async function getGlobalState() {
+    let state = await State.findOne({ key: "global" });
+    if (!state) state = await State.create({ key: "global" });
+    return state;
 }
 
-function saveDB() { fs.writeFileSync(DB_FILE, JSON.stringify({ players, globalMatter }, null, 2)); }
+// 4. API ДЛЯ КЛИКОВ
+app.post('/api/click', async (req, res) => {
+    try {
+        const { userId, userName, action, referrerId } = req.body;
+        const now = Date.now();
 
-app.post('/api/click', (req, res) => {
-    const { userId, userName, action, referrerId } = req.body;
-    const now = Date.now();
+        let player = await Player.findOne({ userId });
+        let state = await getGlobalState();
 
-    // Если игрока еще нет в базе
-    if (!players[userId]) {
-        players[userId] = { 
-            balance: 0, 
-            name: userName || 'Unknown', 
-            clickPower: 0.0001, 
-            autoPower: 0, 
-            lastCheck: now 
-        };
-
-        // ЛОГИКА РЕФЕРАЛА: если есть пригласитель и это не сам игрок
-        if (referrerId && players[referrerId] && referrerId !== userId) {
-            const bonus = 0.0100;
-            if (globalMatter >= bonus) {
-                players[referrerId].balance += bonus;
-                globalMatter -= bonus;
-                console.log(`Игрок ${userId} приглашен пользователем ${referrerId}. Бонус начислен!`);
+        if (!player) {
+            player = new Player({ userId, name: userName || 'Unknown', lastCheck: now });
+            if (referrerId && referrerId !== userId) {
+                await Player.updateOne({ userId: referrerId }, { $inc: { balance: 0.0100 } });
+                state.globalMatter -= 0.0100;
             }
         }
-    }
 
-    const timePassed = (now - (players[userId].lastCheck || now)) / 1000;
-    const passiveGain = timePassed * (players[userId].autoPower || 0);
-    
-    if (passiveGain > 0 && globalMatter >= passiveGain) {
-        players[userId].balance += passiveGain;
-        globalMatter -= passiveGain;
-    }
-    players[userId].lastCheck = now;
-
-    if (action === 'click') {
-        const reward = players[userId].clickPower || 0.0001;
-        if (globalMatter >= reward) {
-            players[userId].balance += reward;
-            globalMatter -= reward;
+        const timePassed = (now - player.lastCheck) / 1000;
+        const passiveGain = timePassed * player.autoPower;
+        
+        if (passiveGain > 0 && state.globalMatter >= passiveGain) {
+            player.balance += passiveGain;
+            state.globalMatter -= passiveGain;
         }
+        player.lastCheck = now;
+
+        if (action === 'click') {
+            if (state.globalMatter >= player.clickPower) {
+                player.balance += player.clickPower;
+                state.globalMatter -= player.clickPower;
+            }
+        }
+
+        await player.save();
+        await state.save();
+
+        res.json({ balance: player.balance, globalMatter: state.globalMatter, autoPower: player.autoPower });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
     }
-    saveDB();
-    res.json({ balance: players[userId].balance, globalMatter, autoPower: players[userId].autoPower });
 });
 
-app.post('/api/upgrade', (req, res) => {
-    const { userId, type } = req.body;
-    const player = players[userId];
-    if (!player) return res.json({ success: false });
+// 5. API ДЛЯ АПГРЕЙДОВ
+app.post('/api/upgrade', async (req, res) => {
+    try {
+        const { userId, type } = req.body;
+        const player = await Player.findOne({ userId });
+        if (!player) return res.json({ success: false });
 
-    if (type === 'click' && player.balance >= 0.0050) {
-        player.balance -= 0.0050;
-        player.clickPower *= 2;
-        saveDB();
-        return res.json({ success: true, balance: player.balance });
-    } 
-    if (type === 'auto' && player.balance >= 0.0100) {
-        player.balance -= 0.0100;
-        player.autoPower = (player.autoPower || 0) + 0.0001;
-        saveDB();
-        return res.json({ success: true, balance: player.balance });
-    }
-    res.json({ success: false, message: "Недостаточно материи" });
+        const costs = { click: 0.0050, auto: 0.0100 };
+        const cost = costs[type];
+
+        if (player.balance >= cost) {
+            player.balance -= cost;
+            if (type === 'click') player.clickPower *= 2;
+            if (type === 'auto') player.autoPower += 0.0001;
+            await player.save();
+            res.json({ success: true, balance: player.balance });
+        } else {
+            res.json({ success: false, message: "Недостаточно материи" });
+        }
+    } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/leaderboard', (req, res) => {
-    const leaderboard = Object.values(players).sort((a, b) => b.balance - a.balance).slice(0, 10);
+// 6. ЛИДЕРБОРД
+app.get('/api/leaderboard', async (req, res) => {
+    const leaderboard = await Player.find().sort({ balance: -1 }).limit(10);
     res.json(leaderboard);
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => { console.log(`Server running on ${PORT}`); });
+app.listen(PORT, '0.0.0.0', () => console.log(`СЕРВЕР ЗАПУЩЕН НА ПОРТУ ${PORT}`));
