@@ -6,191 +6,97 @@
     <title>THE VOID</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { 
-            background-color: #000; 
-            color: #fff; 
-            margin: 0; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            font-family: sans-serif; 
-            overflow: hidden; 
-            user-select: none;
-        }
-        
-        #global-container {
-            position: absolute;
-            top: 40px;
-            text-align: center;
-            color: #444;
-            letter-spacing: 2px;
-            font-size: 0.7rem;
-        }
-
-        #global-matter {
-            color: #888;
-            font-size: 0.9rem;
-            display: block;
-            margin-top: 5px;
-        }
-
-        #void-sphere { 
-            width: 200px; 
-            height: 200px; 
-            background: radial-gradient(circle, #222 0%, #000 80%); 
-            border-radius: 50%; 
-            border: 2px solid #333;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
-            cursor: pointer; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.05s ease;
-            z-index: 10;
-        }
-        
-        #void-sphere:active { transform: scale(0.95); border-color: #555; }
-
+        body { background-color: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; overflow: hidden; user-select: none; }
+        #global-container { position: absolute; top: 40px; text-align: center; color: #444; letter-spacing: 2px; font-size: 0.7rem; }
+        #global-matter { color: #888; font-size: 0.9rem; display: block; margin-top: 5px; }
+        #void-sphere { width: 200px; height: 200px; background: radial-gradient(circle, #222 0%, #000 80%); border-radius: 50%; border: 2px solid #333; box-shadow: 0 0 20px rgba(255,255,255,0.05); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.05s ease; z-index: 10; }
+        #void-sphere:active { transform: scale(0.95); }
         #balance { font-size: 3rem; margin-top: 20px; font-weight: 100; }
         .label { color: #333; font-size: 0.6rem; letter-spacing: 4px; }
-
-        /* Таблица лидеров */
-        #leaderboard {
-            display: none; 
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 100;
-            padding-top: 60px;
-            text-align: center;
-        }
-
-        .leader-list {
-            width: 80%;
-            margin: 20px auto;
-        }
-
-        .leader-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #111;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-
-        .close-btn { 
-            margin-top: 30px; 
-            color: #666; 
-            text-decoration: underline; 
-            font-size: 0.8rem;
-            cursor: pointer;
-        }
-
-        .view-btn {
-            position: absolute;
-            bottom: 40px;
-            color: #444;
-            font-size: 0.7rem;
-            letter-spacing: 2px;
-            cursor: pointer;
-        }
-
-        @keyframes flyUp {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(-120px); opacity: 0; }
-        }
+        .btn-panel { position: absolute; bottom: 30px; display: flex; gap: 20px; }
+        .ui-btn { color: #444; font-size: 0.7rem; letter-spacing: 2px; cursor: pointer; border: 1px solid #222; padding: 10px 20px; border-radius: 5px; }
+        @keyframes flyUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-120px); opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <!-- Экран лидеров (скрыт по умолчанию) -->
-    <div id="leaderboard">
-        <div style="letter-spacing: 5px; color: #555; margin-bottom: 20px;">TOP EXTRACTORS</div>
-        <div id="leader-list" class="leader-list"></div>
-        <div class="close-btn" onclick="toggleLeaderboard()">CLOSE</div>
-    </div>
-
-    <div id="global-container">
-        TOTAL VOID REMAINING
-        <span id="global-matter">1000.0000</span>
-    </div>
-
-    <div id="void-sphere">
-        <div style="width: 4px; height: 4px; background: #fff; opacity: 0.1; border-radius: 50%;"></div>
-    </div>
-    
+    <div id="global-container">TOTAL VOID REMAINING<span id="global-matter">1000.0000</span></div>
+    <div id="void-sphere"></div>
     <div id="balance">0.0000</div>
     <div class="label">MY MATTER</div>
 
-    <div class="view-btn" onclick="toggleLeaderboard()">VIEW RANKINGS</div>
+    <div class="btn-panel">
+        <div class="ui-btn" onclick="toggleLeaderboard()">TOP</div>
+        <div class="ui-btn" onclick="buyUpgrade()">UPGRADE (0.0050)</div>
+    </div>
+
+    <div id="leaderboard" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:100; padding-top:60px; text-align:center;">
+        <div style="letter-spacing:5px; color:#555; margin-bottom:20px;">TOP EXTRACTORS</div>
+        <div id="leader-list" style="width:80%; margin:20px auto;"></div>
+        <div class="ui-btn" onclick="toggleLeaderboard()">CLOSE</div>
+    </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready();
         tg.expand();
-
         const balanceDisplay = document.getElementById('balance');
         const globalDisplay = document.getElementById('global-matter');
         const sphere = document.getElementById('void-sphere');
-        const leaderBoardEl = document.getElementById('leaderboard');
-        const leaderListEl = document.getElementById('leader-list');
-
         const user = tg.initDataUnsafe?.user;
-        const userId = user?.id || 'guest_' + Math.floor(Math.random() * 1000);
+        const userId = user?.id || 'guest';
         const userName = user?.first_name || 'Guest';
 
         async function apiRequest(action = 'load') {
-            try {
-                const response = await fetch('/api/click', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, userName, action })
-                });
-                const data = await response.json();
-                if (data.balance !== undefined) balanceDisplay.innerText = data.balance.toFixed(4);
-                if (data.globalMatter !== undefined) globalDisplay.innerText = data.globalMatter.toFixed(4);
-            } catch (e) { console.error(e); }
+            const res = await fetch('/api/click', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, userName, action })
+            });
+            const data = await res.json();
+            balanceDisplay.innerText = data.balance.toFixed(4);
+            globalDisplay.innerText = data.globalMatter.toFixed(4);
         }
 
-        async function toggleLeaderboard() {
-            if (leaderBoardEl.style.display === 'block') {
-                leaderBoardEl.style.display = 'none';
+        async function buyUpgrade() {
+            const res = await fetch('/api/upgrade', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                tg.showAlert('Улучшение куплено! Теперь клик мощнее.');
+                balanceDisplay.innerText = data.balance.toFixed(4);
             } else {
-                leaderBoardEl.style.display = 'block';
-                try {
-                    const response = await fetch('/api/leaderboard');
-                    const leaders = await response.json();
-                    leaderListEl.innerHTML = '';
-                    leaders.forEach((player, i) => {
-                        leaderListEl.innerHTML += `
-                            <div class="leader-item">
-                                <span>${i+1}. ${player.name}</span>
-                                <span style="color:#555">${player.balance.toFixed(4)}</span>
-                            </div>`;
-                    });
-                } catch (e) { console.error(e); }
+                tg.showAlert(data.message);
             }
         }
 
-        apiRequest('load');
+        async function toggleLeaderboard() {
+            const el = document.getElementById('leaderboard');
+            if (el.style.display === 'block') el.style.display = 'none';
+            else {
+                el.style.display = 'block';
+                const res = await fetch('/api/leaderboard');
+                const leaders = await res.json();
+                document.getElementById('leader-list').innerHTML = leaders.map((p, i) => `
+                    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #111;">
+                        <span>${i+1}. ${p.name}</span><span>${p.balance.toFixed(4)}</span>
+                    </div>`).join('');
+            }
+        }
 
         sphere.onclick = (e) => {
             const flyText = document.createElement('div');
-            flyText.innerText = '+0.0001';
-            flyText.style.position = 'fixed';
-            flyText.style.left = e.clientX + 'px';
-            flyText.style.top = e.clientY + 'px';
-            flyText.style.color = '#fff';
-            flyText.style.animation = 'flyUp 1s forwards';
-            document.body.appendChild(flyText);
+            flyText.innerText = '+';
+            flyText.style.position = 'fixed'; flyText.style.left = e.clientX + 'px'; flyText.style.top = e.clientY + 'px';
+            flyText.style.animation = 'flyUp 1s forwards'; document.body.appendChild(flyText);
             setTimeout(() => flyText.remove(), 1000);
-
             if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
             apiRequest('click');
         };
+
+        apiRequest('load');
     </script>
 </body>
 </html>
