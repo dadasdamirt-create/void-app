@@ -6,16 +6,39 @@
     <title>THE VOID</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background-color: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; overflow: hidden; user-select: none; }
-        #global-container { position: absolute; top: 40px; text-align: center; color: #444; letter-spacing: 2px; font-size: 0.7rem; }
-        #global-matter { color: #888; font-size: 0.9rem; display: block; margin-top: 5px; }
-        #void-sphere { width: 200px; height: 200px; background: radial-gradient(circle, #222 0%, #000 80%); border-radius: 50%; border: 2px solid #333; box-shadow: 0 0 20px rgba(255,255,255,0.05); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.05s ease; z-index: 10; }
+      body { 
+            background-color: #000; 
+            color: #fff; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: flex-start; /* Начинаем сверху */
+            padding-top: 100px;
+            height: 100vh; 
+            font-family: sans-serif; 
+            overflow: hidden; 
+            user-select: none; 
+        }
+        #global-container { margin-bottom: 20px; text-align: center; color: #444; letter-spacing: 2px; font-size: 0.7rem; }
+        #global-matter { color: #888; font-size: 0.9rem; display: block; }
+        #void-sphere { width: 180px; height: 180px; background: radial-gradient(circle, #222 0%, #000 80%); border-radius: 50%; border: 2px solid #333; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.05s ease; }
         #void-sphere:active { transform: scale(0.95); }
-        #balance { font-size: 3rem; margin-top: 20px; font-weight: 100; }
-        .label { color: #333; font-size: 0.6rem; letter-spacing: 4px; }
-        .btn-panel { position: absolute; bottom: 30px; display: flex; gap: 20px; }
-        .ui-btn { color: #444; font-size: 0.7rem; letter-spacing: 2px; cursor: pointer; border: 1px solid #222; padding: 10px 20px; border-radius: 5px; }
-        @keyframes flyUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-120px); opacity: 0; } }
+        #balance { font-size: 2.5rem; margin-top: 20px; font-weight: 100; }
+        .label { color: #333; font-size: 0.6rem; letter-spacing: 4px; margin-bottom: 30px;}
+        
+        /* Кнопки теперь в ряд и заметнее */
+        .btn-panel { display: flex; gap: 10px; margin-top: 20px; }
+        .ui-btn { 
+            color: #ccc; 
+            font-size: 0.6rem; 
+            letter-spacing: 1px; 
+            cursor: pointer; 
+            border: 1px solid #444; 
+            padding: 12px 15px; 
+            border-radius: 8px; 
+            background: #111;
+        }
     </style>
 </head>
 <body>
