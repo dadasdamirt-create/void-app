@@ -6,13 +6,11 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Подключение к базе данных
-const MONGO_URI = process.env.MONGO_URI; 
+const MONGO_URI = process.env.MONGO_URI;
 mongoose.connect(MONGO_URI)
     .then(() => console.log("БАЗА ПОДКЛЮЧЕНА"))
     .catch(err => console.error("ОШИБКА МОНГО:", err));
 
-// Схема игрока
 const playerSchema = new mongoose.Schema({
     userId: { type: String, unique: true },
     name: String,
@@ -24,7 +22,6 @@ const playerSchema = new mongoose.Schema({
 });
 const Player = mongoose.model('Player', playerSchema);
 
-// Схема глобального состояния
 const State = mongoose.model('State', new mongoose.Schema({
     key: { type: String, default: "global" },
     globalMatter: { type: Number, default: 1000.0000 }
@@ -36,10 +33,9 @@ async function getGlobalState() {
     return state;
 }
 
-// Функция расчета стоимости апгрейда (базовая цена * 1.5 ^ уровень)
+// Формула цены: базовая цена * 1.5 в степени (уровень)
 const getUpgradeCost = (base, level) => base * Math.pow(1.5, level);
 
-// API для клика и синхронизации
 app.post('/api/click', async (req, res) => {
     try {
         const { userId, userName, action, referrerId } = req.body;
@@ -49,27 +45,24 @@ app.post('/api/click', async (req, res) => {
 
         if (!player) {
             player = new Player({ userId, name: userName || 'Unknown', lastCheck: now });
-            // Бонус за реферала (если новый игрок)
             if (referrerId && referrerId !== userId) {
                 await Player.updateOne({ userId: referrerId }, { $inc: { balance: 0.0100 } });
                 state.globalMatter -= 0.0100;
             }
         }
 
-        // 1. Считаем пассивный доход
-        const autoPower = player.autoLevel * 0.0001; 
+        const autoPower = player.autoLevel * 0.0001;
         const timeDiff = (now - player.lastCheck) / 1000;
         const passiveGain = timeDiff * autoPower;
-        
+
         if (passiveGain > 0 && state.globalMatter >= passiveGain) {
             player.balance += passiveGain;
             state.globalMatter -= passiveGain;
         }
         player.lastCheck = now;
 
-        // 2. Обрабатываем клик с анти-читом
         if (action === 'click') {
-            // Защита: не более 10 кликов в секунду (интервал 100мс)
+            // АНТИ-ЧИТ: не чаще 10 кликов в секунду (100мс)
             if (now - player.lastClickTime >= 100) {
                 const clickPower = 0.0001 + (player.clickLevel - 1) * 0.0001;
                 if (state.globalMatter >= clickPower) {
@@ -83,8 +76,8 @@ app.post('/api/click', async (req, res) => {
         await player.save();
         await state.save();
 
-        res.json({ 
-            balance: player.balance, 
+        res.json({
+            balance: player.balance,
             globalMatter: state.globalMatter,
             autoPower: autoPower,
             nextClickCost: getUpgradeCost(0.0050, player.clickLevel - 1),
@@ -95,7 +88,6 @@ app.post('/api/click', async (req, res) => {
     }
 });
 
-// API для апгрейдов
 app.post('/api/upgrade', async (req, res) => {
     try {
         const { userId, type } = req.body;
@@ -116,7 +108,6 @@ app.post('/api/upgrade', async (req, res) => {
                 player.autoLevel += 1;
             } else return res.json({ success: false, message: "Мало материи" });
         }
-
         await player.save();
         res.json({ success: true, balance: player.balance });
     } catch (e) {
@@ -124,7 +115,6 @@ app.post('/api/upgrade', async (req, res) => {
     }
 });
 
-// Лидерборд
 app.get('/api/leaderboard', async (req, res) => {
     const leaderboard = await Player.find().sort({ balance: -1 }).limit(10);
     res.json(leaderboard);
