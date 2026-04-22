@@ -7,72 +7,44 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --main-color: #fff; --bg-color: #000; --skin-color: #fff; --event-color: #ff3333; }
-        body { background: var(--bg-color); color: var(--main-color); margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg-color); color: var(--main-color); margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; user-select: none; }
         
-        /* Индикатор ивента */
-        #event-banner { 
-            position: absolute; top: 0; width: 100%; padding: 5px; 
-            background: var(--event-color); color: #000; font-weight: bold; 
-            font-size: 0.6rem; text-align: center; letter-spacing: 2px;
-            transform: translateY(-100%); transition: transform 0.5s ease; z-index: 1000;
-        }
+        #event-banner { position: absolute; top: 0; width: 100%; padding: 5px; background: var(--event-color); color: #000; font-weight: bold; font-size: 0.6rem; text-align: center; transform: translateY(-100%); transition: 0.5s; z-index: 1000; }
         body.event-active #event-banner { transform: translateY(0); }
 
-        #global-container { margin-top: 35px; text-align: center; opacity: 0.4; letter-spacing: 2px; font-size: 0.6rem; }
-        #global-matter { display: block; font-size: 0.75rem; margin-top: 4px; }
-
-        #level-info { width: 85%; display: flex; justify-content: space-between; margin-top: 25px; font-size: 0.65rem; font-weight: bold; color: #888; }
+        #level-info { width: 85%; display: flex; justify-content: space-between; margin-top: 50px; font-size: 0.65rem; color: #888; font-weight: bold; }
         #level-container { width: 85%; height: 6px; background: #111; margin-top: 8px; border-radius: 10px; border: 1px solid #222; overflow: hidden; }
-        #level-bar { width: 2%; height: 100%; background: var(--skin-color); box-shadow: 0 0 15px var(--skin-color); transition: width 0.5s; }
+        #level-bar { width: 2%; height: 100%; background: var(--skin-color); box-shadow: 0 0 15px var(--skin-color); transition: 0.5s; }
 
-        #sphere-wrapper { position: relative; margin-top: 40px; }
         #void-sphere { 
-            width: 190px; height: 190px; 
+            width: 180px; height: 180px; margin-top: 40px;
             background: radial-gradient(circle, #1a1a1a 0%, #000 70%); 
             border-radius: 50%; border: 2px solid var(--skin-color); 
             cursor: pointer; display: flex; align-items: center; justify-content: center; 
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: 0.3s; box-shadow: 0 0 20px rgba(255,255,255,0.05);
         }
-        
-        /* Эффект ивента на сфере */
-        body.event-active #void-sphere { 
-            border-color: var(--event-color); 
-            box-shadow: 0 0 40px var(--event-color);
-            animation: shake 0.1s infinite;
-        }
+        body.event-active #void-sphere { border-color: var(--event-color); box-shadow: 0 0 40px var(--event-color); animation: shake 0.1s infinite; }
 
-        #balance { font-size: 3rem; margin-top: 25px; font-weight: 200; font-variant-numeric: tabular-nums; }
-        .label { color: #333; font-size: 0.55rem; letter-spacing: 4px; margin-bottom: 20px; }
+        #balance { font-size: 3rem; margin-top: 25px; font-variant-numeric: tabular-nums; }
+        .label { color: #333; font-size: 0.55rem; letter-spacing: 4px; }
 
         .btn-panel { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 95%; margin-top: auto; padding-bottom: 35px; }
         .ui-btn { background: #050505; border: 1px solid #151515; color: #aaa; padding: 12px; border-radius: 10px; flex: 1; min-width: 80px; text-align: center; cursor: pointer; font-size: 0.55rem; }
-        .ui-btn:active { background: #111; color: #fff; }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; padding-top: 60px; text-align: center; overflow-y: auto; }
-        .card { background: #080808; border: 1px solid #111; margin: 8px 20px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; padding-top: 50px; text-align: center; overflow-y: auto; }
+        .card { background: #080808; border: 1px solid #111; margin: 8px 15px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
         
         .particle { position: fixed; pointer-events: none; background: var(--skin-color); border-radius: 50%; z-index: 50; }
-        body.event-active .particle { background: var(--event-color); }
-
-        @keyframes shake {
-            0% { transform: translate(0,0); }
-            50% { transform: translate(2px, 2px); }
-            100% { transform: translate(-2px, -2px); }
-        }
-        @keyframes particle-fly { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; } }
+        @keyframes shake { 0% { transform: translate(0,0); } 50% { transform: translate(2px, 2px); } 100% { transform: translate(-2px, -2px); } }
         @keyframes flyUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
     </style>
 </head>
 <body id="main-body">
 
-    <div id="event-banner">VOID BREACH DETECTED: 5X MULTIPLIER ACTIVE</div>
-
-    <div id="global-container">GLOBAL REMAINING<span id="global-matter">1000.0000</span></div>
-    <div id="level-info"><span id="player-level">LEVEL 1</span><span style="color: #444">VOID XP</span></div>
+    <div id="event-banner">VOID BREACH: 5X MULTIPLIER</div>
+    <div id="level-info"><span id="player-level">LEVEL 1</span><span>VOID XP</span></div>
     <div id="level-container"><div id="level-bar"></div></div>
-
-    <div id="sphere-wrapper"><div id="void-sphere"></div></div>
-
+    <div id="void-sphere"></div>
     <div id="balance">0.0000</div>
     <div class="label">EXTRACTED MATTER</div>
 
@@ -82,25 +54,28 @@
         <div class="ui-btn" onclick="toggleModal('rewards')">EARN</div>
     </div>
 
-    <!-- Модалки те же, что были -->
+    <!-- Модалки -->
     <div id="leaderboard" class="modal">
-        <div style="letter-spacing: 5px; opacity: 0.2; margin-bottom: 30px;">RANKINGS</div>
+        <div style="opacity: 0.2; margin-bottom: 30px;">RANKINGS</div>
         <div id="leader-list"></div>
-        <div class="ui-btn" onclick="toggleModal('leaderboard')" style="width: 80px; margin: 40px auto;">BACK</div>
+        <div class="ui-btn" onclick="toggleModal('leaderboard')" style="width: 80px; margin: 20px auto;">BACK</div>
     </div>
+
     <div id="shop" class="modal">
-        <div style="letter-spacing: 5px; opacity: 0.2; margin-bottom: 20px;">SHOP</div>
-        <div class="card"><div>Click Sharpen<div id="cost-click" style="font-size: 0.5rem; color: #444;">...</div></div><div class="ui-btn" onclick="buyUpgrade('click')" style="min-width: 60px;">UP</div></div>
-        <div class="card"><div>Pulse Miner<div id="cost-auto" style="font-size: 0.5rem; color: #444;">...</div></div><div class="ui-btn" onclick="buyUpgrade('auto')" style="min-width: 60px;">UP</div></div>
-        <div style="margin: 20px; font-size: 0.6rem; color: #333;">SKINS</div>
-        <div class="card"><div style="color: #ffd700;">Gold Skin (0.5000)</div><div class="ui-btn" id="skin-btn-gold" onclick="manageSkin('gold')" style="min-width: 60px;">BUY</div></div>
-        <div class="card"><div style="color: #00ffff;">Plasma Skin (2.0000)</div><div class="ui-btn" id="skin-btn-plasma" onclick="manageSkin('plasma')" style="min-width: 60px;">BUY</div></div>
+        <div style="opacity: 0.2; margin-bottom: 20px;">UPGRADES & SKINS</div>
+        <div class="card"><div>Click Power<div id="cost-click" style="font-size: 0.5rem; color: #444;">...</div></div><div class="ui-btn" onclick="buyUpgrade('click')" style="min-width: 60px;">UP</div></div>
+        <div class="card"><div>Auto Miner<div id="cost-auto" style="font-size: 0.5rem; color: #444;">...</div></div><div class="ui-btn" onclick="buyUpgrade('auto')" style="min-width: 60px;">UP</div></div>
+        
+        <div style="margin: 20px; font-size: 0.6rem; color: #333;">SKINS MARKET</div>
+        <div id="skin-list"></div>
         <div class="ui-btn" onclick="toggleModal('shop')" style="width: 80px; margin: 20px auto;">BACK</div>
     </div>
+
     <div id="rewards" class="modal">
-        <div style="letter-spacing: 5px; opacity: 0.2; margin-bottom: 30px;">REWARDS</div>
+        <div style="opacity: 0.2; margin-bottom: 30px;">REWARDS</div>
         <div class="card"><div>Daily Cycle</div><div class="ui-btn" onclick="claimDaily()" style="min-width: 60px;">CLAIM</div></div>
-        <div class="card"><div>Expansion<div id="ref-count" style="font-size: 0.5rem; color: #444;">Friends: 0/3</div></div><div class="ui-btn" onclick="completeQuest('invite_3')" style="min-width: 60px;">CHECK</div></div>
+        <div class="card"><div>Sub Channel</div><div class="ui-btn" onclick="completeQuest('sub_tg')" style="min-width: 60px;">GO</div></div>
+        <div class="card"><div>Friends<div id="ref-count" style="font-size: 0.5rem; color: #444;">...</div></div><div class="ui-btn" onclick="completeQuest('invite_3')" style="min-width: 60px;">CHECK</div></div>
         <div class="ui-btn" onclick="inviteFriend()" style="width: 80%; margin: 20px auto;">INVITE</div>
         <div class="ui-btn" onclick="toggleModal('rewards')" style="width: 80px; margin: 10px auto;">BACK</div>
     </div>
@@ -108,6 +83,14 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready(); tg.expand();
+
+        // ЗВУКИ
+        const sounds = {
+            click: new Audio('sounds/click.mp3'),
+            upgrade: new Audio('sounds/upgrade.mp3'),
+            event: new Audio('sounds/event.mp3')
+        };
+        function playSound(name) { sounds[name].currentTime = 0; sounds[name].play().catch(() => {}); }
 
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
         const userName = tg.initDataUnsafe?.user?.first_name || 'Guest';
@@ -119,49 +102,56 @@
         let activeSkin = 'white';
         let isEvent = false;
 
-        const skinColors = { 'white': '#ffffff', 'gold': '#ffd700', 'plasma': '#00ffff' };
+        const skinConfig = {
+            'white': { name: 'White', color: '#ffffff', price: 0 },
+            'gold': { name: 'Gold', color: '#ffd700', price: 0.5 },
+            'plasma': { name: 'Plasma', color: '#00ffff', price: 2.0 },
+            'emerald': { name: 'Emerald', color: '#50c878', price: 10.0 },
+            'ruby': { name: 'Ruby', color: '#e0115f', price: 50.0 }
+        };
 
         function updateSkinUI(skin) {
             activeSkin = skin;
-            document.documentElement.style.setProperty('--skin-color', skinColors[skin]);
-            ['gold', 'plasma'].forEach(s => {
-                const btn = document.getElementById(`skin-btn-${s}`);
-                if (ownedSkins.includes(s)) btn.innerText = (activeSkin === s) ? 'ACTIVE' : 'USE';
-            });
+            document.documentElement.style.setProperty('--skin-color', skinConfig[skin].color);
+            renderSkins();
+        }
+
+        function renderSkins() {
+            const list = document.getElementById('skin-list');
+            list.innerHTML = Object.keys(skinConfig).filter(s => s !== 'white').map(s => {
+                const conf = skinConfig[s];
+                const isOwned = ownedSkins.includes(s);
+                const isActive = activeSkin === s;
+                return `
+                <div class="card">
+                    <div style="text-align: left;"><div style="color: ${conf.color}">${conf.name}</div><div style="font-size: 0.5rem; color: #444;">${isOwned ? 'Owned' : 'Price: ' + conf.price}</div></div>
+                    <div class="ui-btn" onclick="manageSkin('${s}')" style="min-width: 60px; color: ${isActive ? '#00ff00' : '#aaa'}">${isOwned ? (isActive ? 'ACTIVE' : 'USE') : 'BUY'}</div>
+                </div>`;
+            }).join('');
         }
 
         async function apiRequest(action = 'load') {
-            const res = await fetch('/api/click', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, userName, action, referrerId })
-            });
+            const res = await fetch('/api/click', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, userName, action, referrerId }) });
             const data = await res.json();
             currentBalance = data.balance;
             autoPower = data.autoPower || 0;
             ownedSkins = data.ownedSkins || ['white'];
             
-            // ОБРАБОТКА ИВЕНТА
+            if (data.eventActive && !isEvent) playSound('event');
             isEvent = data.eventActive;
-            if (isEvent) {
-                document.getElementById('main-body').classList.add('event-active');
-                if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning');
-            } else {
-                document.getElementById('main-body').classList.remove('event-active');
-            }
+            document.getElementById('main-body').classList.toggle('event-active', isEvent);
 
             document.getElementById('balance').innerText = currentBalance.toFixed(4);
-            document.getElementById('global-matter').innerText = data.globalMatter.toFixed(4);
             document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
             document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
             document.getElementById('player-level').innerText = `LEVEL ${data.level}`;
             document.getElementById('ref-count').innerText = `Friends: ${data.referralCount}/3`;
-
-            const progress = ((data.totalExtracted % 0.5) / 0.5) * 100;
-            document.getElementById('level-bar').style.width = Math.max(progress, 2) + '%';
+            document.getElementById('level-bar').style.width = Math.max(((data.totalExtracted % 0.5) / 0.5) * 100, 2) + '%';
             updateSkinUI(data.currentSkin);
         }
 
         document.getElementById('void-sphere').onclick = (e) => {
+            playSound('click');
             for (let i = 0; i < 6; i++) {
                 const p = document.createElement('div'); p.className = 'particle';
                 p.style.width = p.style.height = (Math.random() * 2 + 1) + 'px';
@@ -174,8 +164,7 @@
             const flyText = document.createElement('div');
             flyText.innerText = isEvent ? '+0.0005' : '+0.0001';
             flyText.style.position = 'fixed'; flyText.style.left = e.clientX + 'px'; flyText.style.top = e.clientY + 'px';
-            flyText.style.color = isEvent ? '#ff3333' : skinColors[activeSkin];
-            flyText.style.fontWeight = isEvent ? 'bold' : 'normal';
+            flyText.style.color = isEvent ? '#ff3333' : skinConfig[activeSkin].color;
             flyText.style.animation = 'flyUp 1s forwards';
             document.body.appendChild(flyText); setTimeout(() => flyText.remove(), 1000);
 
@@ -185,27 +174,32 @@
             apiRequest('click');
         };
 
-        // Остальные функции (buyUpgrade, manageSkin, toggleModal, loadLeaderboard, claimDaily, completeQuest, inviteFriend) ТЕ ЖЕ
         async function buyUpgrade(type) {
             const res = await fetch('/api/upgrade', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, type }) });
             const data = await res.json();
-            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); apiRequest('load'); }
+            if (data.success) { playSound('upgrade'); tg.HapticFeedback.notificationOccurred('success'); apiRequest('load'); }
             else tg.showAlert("Need more matter");
         }
+
         async function manageSkin(skinId) {
             const action = ownedSkins.includes(skinId) ? 'use' : 'buy';
             const res = await fetch('/api/skin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, skinId, action }) });
             const data = await res.json();
-            if (data.success) { ownedSkins = data.ownedSkins; updateSkinUI(data.currentSkin); if (action === 'buy') apiRequest('load'); }
+            if (data.success) { playSound('upgrade'); ownedSkins = data.ownedSkins; updateSkinUI(data.currentSkin); if (action === 'buy') apiRequest('load'); }
         }
-        function toggleModal(id) { const el = document.getElementById(id); const isVisible = el.style.display === 'block'; el.style.display = isVisible ? 'none' : 'block'; if (!isVisible && id === 'leaderboard') loadLeaderboard(); }
-        async function loadLeaderboard() { const res = await fetch('/api/leaderboard'); const leaders = await res.json(); document.getElementById('leader-list').innerHTML = leaders.map((p, i) => `<div style="display:flex; justify-content:space-between; width: 85%; margin: 10px auto; padding:8px; border-bottom:1px solid #111; font-size: 0.75rem; font-family: monospace; color: #666;"><span>${i+1}. ${p.name}</span><span>${p.balance.toFixed(4)}</span></div>`).join(''); }
-        async function claimDaily() { const res = await fetch('/api/daily-bonus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); const data = await res.json(); if (data.success) { tg.showAlert(`Claimed bonus!`); apiRequest('load'); } else tg.showAlert(data.message); }
-        async function completeQuest(questId) { const res = await fetch('/api/complete-quest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, questId }) }); const data = await res.json(); if (data.success) { tg.showAlert('Quest completed!'); apiRequest('load'); } else tg.showAlert("Not yet"); }
-        function inviteFriend() { const botUsername = 'void_clicker_bot'; const inviteLink = `https://t.me/${botUsername}?start=${userId}`; tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Extract the Void!')}`); }
+
+        function toggleModal(id) { const el = document.getElementById(id); el.style.display = (el.style.display === 'block') ? 'none' : 'block'; if (id === 'leaderboard' && el.style.display === 'block') loadLeaderboard(); }
+        async function loadLeaderboard() { const res = await fetch('/api/leaderboard'); const leaders = await res.json(); document.getElementById('leader-list').innerHTML = leaders.map((p, i) => `<div style="display:flex; justify-content:space-between; width: 85%; margin: 10px auto; padding:8px; border-bottom:1px solid #111; font-size: 0.75rem; color: #666;"><span>${i+1}. ${p.name}</span><span>${p.balance.toFixed(4)}</span></div>`).join(''); }
+        async function claimDaily() { const res = await fetch('/api/daily-bonus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }); const data = await res.json(); if (data.success) { playSound('upgrade'); tg.showAlert(`Bonus!`); apiRequest('load'); } else tg.showAlert(data.message); }
+        async function completeQuest(questId) { 
+            if(questId === 'sub_tg') tg.openTelegramLink('https://t.me/your_channel');
+            const res = await fetch('/api/complete-quest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId, questId }) });
+            const data = await res.json();
+            if (data.success) { playSound('upgrade'); tg.showAlert('Done!'); apiRequest('load'); }
+        }
+        function inviteFriend() { const botUsername = 'void_clicker_bot'; const inviteLink = `https://t.me/${botUsername}?start=${userId}`; tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join the Void!')}`); }
 
         setInterval(() => { if (autoPower > 0) { currentBalance += autoPower; document.getElementById('balance').innerText = currentBalance.toFixed(4); } }, 1000);
-        // Синхронизация чаще, чтобы ловить ивент
         setInterval(() => apiRequest('load'), 5000);
         apiRequest('load');
     </script>
