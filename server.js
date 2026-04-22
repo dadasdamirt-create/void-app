@@ -9,11 +9,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 const MONGO_URI = process.env.MONGO_URI; 
 mongoose.connect(MONGO_URI).then(() => console.log("БАЗА ПОДКЛЮЧЕНА"));
 
-// МОДЕЛЬ ИГРОКА
 const playerSchema = new mongoose.Schema({
     userId: { type: String, unique: true },
     name: String,
     balance: { type: Number, default: 0 },
+    totalExtracted: { type: Number, default: 0 }, // Общая добыча для XP
     clickLevel: { type: Number, default: 1 },
     autoLevel: { type: Number, default: 0 },
     lastCheck: { type: Number, default: Date.now },
@@ -21,7 +21,7 @@ const playerSchema = new mongoose.Schema({
     streak: { type: Number, default: 0 },
     lastBonusClaim: { type: Date, default: null },
     completedQuests: { type: [String], default: [] },
-    referralCount: { type: Number, default: 0 } // Счетчик рефералов
+    referralCount: { type: Number, default: 0 }
 });
 const Player = mongoose.model('Player', playerSchema);
 
@@ -36,8 +36,9 @@ async function getGlobalState() {
     return state;
 }
 
-// Функция расчета стоимости (важно: должна быть одинаковой везде)
 const getUpgradeCost = (base, level) => base * Math.pow(1.5, level);
+// Формула уровня: каждые 0.1 материи — новый уровень
+const getPlayerLevel = (total) => Math.floor(total / 0.1) + 1;
 
 app.post('/api/click', async (req, res) => {
     try {
@@ -48,30 +49,30 @@ app.post('/api/click', async (req, res) => {
 
         if (!player) {
             player = new Player({ userId, name: userName || 'Unknown', lastCheck: now });
-            // Если пришел по рефералке
             if (referrerId && referrerId !== userId) {
-                const referrer = await Player.findOne({ userId: referrerId });
-                if (referrer) {
-                    referrer.balance += 0.0100;
-                    referrer.referralCount += 1; // Увеличиваем счетчик у того, кто пригласил
-                    await referrer.save();
-                    state.globalMatter -= 0.0100;
-                }
+                const ref = await Player.findOne({ userId: referrerId });
+                if (ref) { ref.balance += 0.01; ref.referralCount += 1; await ref.save(); state.globalMatter -= 0.01; }
             }
         }
 
-        const autoPower = player.autoLevel * 0.0001; 
+        const level = getPlayerLevel(player.totalExtracted);
+        const levelMultiplier = 1 + (level - 1) * 0.05; // +5% за уровень
+
+        const autoPower = player.autoLevel * 0.0001 * levelMultiplier; 
         const passiveGain = ((now - player.lastCheck) / 1000) * autoPower;
+        
         if (passiveGain > 0 && state.globalMatter >= passiveGain) {
             player.balance += passiveGain;
+            player.totalExtracted += passiveGain;
             state.globalMatter -= passiveGain;
         }
         player.lastCheck = now;
 
         if (action === 'click' && (now - player.lastClickTime >= 100)) {
-            const clickPower = 0.0001 + (player.clickLevel - 1) * 0.0001;
+            const clickPower = (0.0001 + (player.clickLevel - 1) * 0.0001) * levelMultiplier;
             if (state.globalMatter >= clickPower) {
                 player.balance += clickPower;
+                player.totalExtracted += clickPower;
                 state.globalMatter -= clickPower;
                 player.lastClickTime = now;
             }
@@ -82,90 +83,58 @@ app.post('/api/click', async (req, res) => {
         res.json({ 
             balance: player.balance, 
             globalMatter: state.globalMatter, 
-            autoPower, 
-            clickLevel: player.clickLevel,
-            autoLevel: player.autoLevel,
+            autoPower,
+            level,
+            totalExtracted: player.totalExtracted,
             referralCount: player.referralCount,
-            nextClickCost: getUpgradeCost(0.0050, player.clickLevel - 1), 
-            nextAutoCost: getUpgradeCost(0.0100, player.autoLevel) 
+            nextClickCost: getUpgradeCost(0.005, player.clickLevel - 1), 
+            nextAutoCost: getUpgradeCost(0.01, player.autoLevel) 
         });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ИСПРАВЛЕННЫЙ АПГРЕЙД
 app.post('/api/upgrade', async (req, res) => {
     const { userId, type } = req.body;
     const player = await Player.findOne({ userId });
     if (!player) return res.json({ success: false });
-
-    let cost = 0;
-    if (type === 'click') {
-        cost = getUpgradeCost(0.0050, player.clickLevel - 1);
-        if (player.balance >= cost) {
-            player.balance -= cost;
-            player.clickLevel += 1;
-        } else return res.json({ success: false, message: "Недостаточно материи" });
-    } else if (type === 'auto') {
-        cost = getUpgradeCost(0.0100, player.autoLevel);
-        if (player.balance >= cost) {
-            player.balance -= cost;
-            player.autoLevel += 1;
-        } else return res.json({ success: false, message: "Недостаточно материи" });
-    }
-
-    await player.save();
-    res.json({ success: true, balance: player.balance });
+    let cost = (type === 'click') ? getUpgradeCost(0.005, player.clickLevel - 1) : getUpgradeCost(0.01, player.autoLevel);
+    if (player.balance >= cost) {
+        player.balance -= cost;
+        if (type === 'click') player.clickLevel += 1; else player.autoLevel += 1;
+        await player.save();
+        res.json({ success: true, balance: player.balance });
+    } else res.json({ success: false, message: "No matter" });
 });
 
 app.post('/api/daily-bonus', async (req, res) => {
     const { userId } = req.body;
     const player = await Player.findOne({ userId });
-    if (!player) return res.json({ success: false });
     const now = new Date();
     const lastClaim = player.lastBonusClaim ? new Date(player.lastBonusClaim) : null;
-    if (lastClaim && lastClaim.toDateString() === now.toDateString()) return res.json({ success: false, message: "Приходи завтра!" });
-    const isConsecutive = lastClaim && (now - lastClaim) < (48 * 60 * 60 * 1000);
-    player.streak = isConsecutive ? (player.streak + 1) : 1;
-    if (player.streak > 7) player.streak = 1;
-    const bonusAmount = 0.0010 * player.streak;
-    player.balance += bonusAmount;
+    if (lastClaim && lastClaim.toDateString() === now.toDateString()) return res.json({ success: false, message: "Wait tomorrow" });
+    player.streak = (lastClaim && (now - lastClaim) < 48 * 3600000) ? player.streak + 1 : 1;
+    const bonus = 0.001 * player.streak;
+    player.balance += bonus;
     player.lastBonusClaim = now;
     await player.save();
-    res.json({ success: true, balance: player.balance, streak: player.streak, amount: bonusAmount });
+    res.json({ success: true, balance: player.balance, amount: bonus });
 });
 
-// КВЕСТ НА ИНВАЙТ
 app.post('/api/complete-quest', async (req, res) => {
     const { userId, questId } = req.body;
     const player = await Player.findOne({ userId });
-    if (!player || player.completedQuests.includes(questId)) return res.json({ success: false, message: "Уже выполнено" });
-
-    if (questId === 'invite_3') {
-        if (player.referralCount >= 3) {
-            player.balance += 0.1500;
-            player.completedQuests.push(questId);
-            await player.save();
-            return res.json({ success: true, balance: player.balance });
-        } else {
-            return res.json({ success: false, message: `Нужно 3 друга, у тебя: ${player.referralCount}` });
-        }
-    }
-
-    const rewards = { "sub_tg": 0.0500 };
-    const reward = rewards[questId];
-    if (reward) {
-        player.balance += reward;
-        player.completedQuests.push(questId);
-        await player.save();
-        return res.json({ success: true, balance: player.balance });
+    if (player.completedQuests.includes(questId)) return res.json({ success: false, message: "Done" });
+    if (questId === 'invite_3' && player.referralCount >= 3) {
+        player.balance += 0.15; player.completedQuests.push(questId); await player.save();
+        return res.json({ success: true });
     }
     res.json({ success: false });
 });
 
 app.get('/api/leaderboard', async (req, res) => {
-    const leaderboard = await Player.find().sort({ balance: -1 }).limit(10);
-    res.json(leaderboard);
+    const leaders = await Player.find().sort({ balance: -1 }).limit(10);
+    res.json(leaders);
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server started`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server live`));
