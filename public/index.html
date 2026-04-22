@@ -25,12 +25,36 @@
     <div id="balance">0.0000</div>
     <div class="label">MY MATTER</div>
 
-    <div class="btn-panel">
-        <div class="ui-btn" onclick="toggleLeaderboard()">RANKINGS</div>
-        <div class="ui-btn" onclick="buyUpgrade('click')">X2 CLICK (0.0050)</div>
-        <div class="ui-btn" onclick="buyUpgrade('auto')">AUTO (0.0100)</div>
-        <div class="ui-btn" onclick="inviteFriend()" style="background:#111; border-color:#555;">INVITE</div>
+   <div class="btn-panel">
+    <div class="ui-btn" onclick="toggleLeaderboard()">TOP 10</div>
+    <div class="ui-btn" onclick="buyUpgrade('click')">
+        UPGRADE CLICK<br><span id="cost-click">0.0050</span>
     </div>
+    <div class="ui-btn" onclick="buyUpgrade('auto')">
+        BUY AUTO<br><span id="cost-auto">0.0100</span>
+    </div>
+</div>
+
+<script>
+    // Обнови функцию apiRequest, чтобы она обновляла цены на кнопках
+    async function apiRequest(action = 'load') {
+        const res = await fetch('/api/click', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, userName, action })
+        });
+        const data = await res.json();
+        
+        currentBalance = data.balance;
+        autoPower = data.autoLevel * 0.0001; // Обновляем силу автокликера
+        
+        balanceDisplay.innerText = currentBalance.toFixed(4);
+        globalDisplay.innerText = data.globalMatter.toFixed(4);
+        
+        // Обновляем цены на кнопках
+        document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
+        document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
+    }
 
     <div id="leaderboard" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:100; padding-top:60px; text-align:center;">
         <div style="letter-spacing:5px; color:#555; margin-bottom:20px;">TOP EXTRACTORS</div>
