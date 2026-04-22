@@ -7,10 +7,10 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// НАСТРОЙКИ (ЗАМЕНИ НА СВОИ)
+// НАСТРОЙКИ
 const MONGO_URI = process.env.MONGO_URI;
-const BOT_TOKEN = "ТВОЙ_ТОКЕН";
-const CHANNEL_ID = "-100XXXXXXXX";
+const BOT_TOKEN = "ТВОЙ_ТОКЕН_ОТ_BOTFATHER"; // Замени на свой
+const CHANNEL_ID = "-100XXXXXXXXXX";       // Замени на свой
 
 mongoose.connect(MONGO_URI).then(() => console.log("БАЗА ПОДКЛЮЧЕНА"));
 
@@ -34,23 +34,14 @@ const Player = mongoose.model('Player', playerSchema);
 
 const State = mongoose.model('State', new mongoose.Schema({
     key: { type: String, default: "global" },
-    globalMatter: { type: Number, default: 1000000.0000 }, // УВЕЛИЧЕНО ДО МИЛЛИОНА
+    globalMatter: { type: Number, default: 1000000.0000 },
     eventActive: { type: Boolean, default: false },
     eventEndTime: { type: Number, default: 0 }
 }));
 
-// ЦЕНЫ И БОНУСЫ СКИНОВ
-const skinConfig = {
-    'white': { price: 0, bonus: 1.0, color: '#ffffff' },
-    'gold': { price: 0.5, bonus: 1.1, color: '#ffd700' },
-    'plasma': { price: 2.0, bonus: 1.3, color: '#00ffff' },
-    'emerald': { price: 10.0, bonus: 1.6, color: '#50c878' },
-    'ruby': { price: 50.0, bonus: 2.5, color: '#e0115f' }
-};
-
 async function getGlobalState() {
     let state = await State.findOne({ key: "global" });
-    if (!state) state = await State.create({ key: "global", globalMatter: 1000000 });
+    if (!state) state = await State.create({ key: "global", globalMatter: 1000000.0 });
     const now = Date.now();
     if (!state.eventActive && Math.random() < 0.01) {
         state.eventActive = true; state.eventEndTime = now + 30000;
@@ -60,6 +51,12 @@ async function getGlobalState() {
     }
     return state;
 }
+
+const skinConfig = {
+    'white': { bonus: 1.0 }, 'gold': { price: 0.5, bonus: 1.1 },
+    'plasma': { price: 2.0, bonus: 1.3 }, 'emerald': { price: 10.0, bonus: 1.6 },
+    'ruby': { price: 50.0, bonus: 2.5 }
+};
 
 const getUpgradeCost = (base, level) => base * Math.pow(1.6, level);
 const getPlayerLevel = (total) => Math.floor(total / 0.5) + 1;
@@ -85,7 +82,8 @@ app.post('/api/click', async (req, res) => {
         if (state.eventActive) totalMult *= 5;
 
         const autoPower = player.autoLevel * 0.0001 * totalMult; 
-        const passiveGain = ((now - player.lastCheck) / 1000) * autoPower;
+        const timeDiff = (now - player.lastCheck) / 1000;
+        const passiveGain = timeDiff > 0 ? timeDiff * autoPower : 0;
         
         if (passiveGain > 0 && state.globalMatter >= passiveGain) {
             player.balance += passiveGain; player.totalExtracted += passiveGain; state.globalMatter -= passiveGain;
@@ -100,71 +98,86 @@ app.post('/api/click', async (req, res) => {
             }
         }
         await player.save(); await state.save();
-        res.json({ balance: player.balance, globalMatter: state.globalMatter, autoPower, level, totalExtracted: player.totalExtracted, currentSkin: player.currentSkin, ownedSkins: player.ownedSkins, eventActive: state.eventActive, nextClickCost: getUpgradeCost(0.005, player.clickLevel - 1), nextAutoCost: getUpgradeCost(0.01, player.autoLevel), referralCount: player.referralCount });
+        res.json({ 
+            balance: player.balance, globalMatter: state.globalMatter, 
+            autoPower, level, totalExtracted: player.totalExtracted,
+            currentSkin: player.currentSkin, ownedSkins: player.ownedSkins,
+            eventActive: state.eventActive, referralCount: player.referralCount,
+            nextClickCost: getUpgradeCost(0.005, player.clickLevel - 1),
+            nextAutoCost: getUpgradeCost(0.01, player.autoLevel)
+        });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/skin', async (req, res) => {
-    const { userId, skinId, action } = req.body;
-    const player = await Player.findOne({ userId });
-    const config = skinConfig[skinId];
-    if (action === 'buy') {
-        if (player.balance >= config.price && !player.ownedSkins.includes(skinId)) {
-            player.balance -= config.price; player.ownedSkins.push(skinId); player.currentSkin = skinId;
-        } else return res.json({ success: false });
-    } else { if (player.ownedSkins.includes(skinId)) player.currentSkin = skinId; }
-    await player.save();
-    res.json({ success: true, currentSkin: player.currentSkin, ownedSkins: player.ownedSkins });
+    try {
+        const { userId, skinId, action } = req.body;
+        const player = await Player.findOne({ userId });
+        const prices = { 'gold': 0.5, 'plasma': 2.0, 'emerald': 10.0, 'ruby': 50.0 };
+        if (action === 'buy') {
+            if (player.balance >= prices[skinId] && !player.ownedSkins.includes(skinId)) {
+                player.balance -= prices[skinId]; player.ownedSkins.push(skinId); player.currentSkin = skinId;
+            } else return res.json({ success: false });
+        } else { if (player.ownedSkins.includes(skinId)) player.currentSkin = skinId; }
+        await player.save();
+        res.json({ success: true, currentSkin: player.currentSkin, ownedSkins: player.ownedSkins });
+    } catch (e) { res.json({ success: false }); }
 });
 
 app.post('/api/upgrade', async (req, res) => {
-    const { userId, type } = req.body;
-    const player = await Player.findOne({ userId });
-    let cost = (type === 'click') ? getUpgradeCost(0.005, player.clickLevel - 1) : getUpgradeCost(0.01, player.autoLevel);
-    if (player.balance >= cost) {
-        player.balance -= cost;
-        if (type === 'click') player.clickLevel += 1; else player.autoLevel += 1;
-        await player.save(); res.json({ success: true, balance: player.balance });
-    } else res.json({ success: false });
+    try {
+        const { userId, type } = req.body;
+        const player = await Player.findOne({ userId });
+        let cost = (type === 'click') ? getUpgradeCost(0.005, player.clickLevel - 1) : getUpgradeCost(0.01, player.autoLevel);
+        if (player.balance >= cost) {
+            player.balance -= cost;
+            if (type === 'click') player.clickLevel += 1; else player.autoLevel += 1;
+            await player.save(); res.json({ success: true, balance: player.balance });
+        } else res.json({ success: false });
+    } catch (e) { res.json({ success: false }); }
 });
 
 app.post('/api/daily-bonus', async (req, res) => {
-    const { userId } = req.body;
-    const player = await Player.findOne({ userId });
-    const now = new Date();
-    const lastClaim = player.lastBonusClaim ? new Date(player.lastBonusClaim) : null;
-    if (lastClaim && lastClaim.toDateString() === now.toDateString()) return res.json({ success: false, message: "Wait tomorrow" });
-    player.streak = (lastClaim && (now - lastClaim) < 48 * 3600000) ? player.streak + 1 : 1;
-    const bonus = 0.001 * player.streak;
-    player.balance += bonus; player.lastBonusClaim = now; await player.save();
-    res.json({ success: true, balance: player.balance, amount: bonus });
+    try {
+        const { userId } = req.body;
+        const player = await Player.findOne({ userId });
+        const now = new Date();
+        const lastClaim = player.lastBonusClaim ? new Date(player.lastBonusClaim) : null;
+        if (lastClaim && lastClaim.toDateString() === now.toDateString()) return res.json({ success: false, message: "Tomorrow!" });
+        player.streak = (lastClaim && (now - lastClaim) < 48 * 3600000) ? player.streak + 1 : 1;
+        const bonus = 0.001 * Math.min(player.streak, 7);
+        player.balance += bonus; player.lastBonusClaim = now; await player.save();
+        res.json({ success: true, balance: player.balance, amount: bonus });
+    } catch (e) { res.json({ success: false }); }
 });
 
 app.post('/api/complete-quest', async (req, res) => {
-    const { userId, questId } = req.body;
-    const player = await Player.findOne({ userId });
-    if (!player || player.completedQuests.includes(questId)) return res.json({ success: false });
-    if (questId === 'sub_tg') {
-        try {
+    try {
+        const { userId, questId } = req.body;
+        const player = await Player.findOne({ userId });
+        if (player.completedQuests.includes(questId)) return res.json({ success: false });
+        if (questId === 'sub_tg') {
             const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${CHANNEL_ID}&user_id=${userId}`;
-            const response = await axios.get(url);
-            if (['member', 'administrator', 'creator'].includes(response.data.result.status)) {
+            const resp = await axios.get(url);
+            if (['member', 'administrator', 'creator'].includes(resp.data.result.status)) {
                 player.balance += 0.1; player.completedQuests.push(questId); await player.save();
                 return res.json({ success: true });
             }
-        } catch (e) { return res.json({ success: false, message: "Check error" }); }
-    }
-    if (questId === 'invite_3' && player.referralCount >= 3) {
-        player.balance += 0.15; player.completedQuests.push(questId); await player.save();
-        return res.json({ success: true });
-    }
-    res.json({ success: false });
+        }
+        if (questId === 'invite_3' && player.referralCount >= 3) {
+            player.balance += 0.15; player.completedQuests.push(questId); await player.save();
+            return res.json({ success: true });
+        }
+        res.json({ success: false });
+    } catch (e) { res.json({ success: false }); }
 });
 
 app.get('/api/leaderboard', async (req, res) => {
-    const leaders = await Player.find().sort({ balance: -1 }).limit(10);
-    res.json(leaders);
+    try {
+        const leaders = await Player.find().sort({ balance: -1 }).limit(10);
+        res.json(leaders);
+    } catch (e) { res.json([]); }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => console.log(`Server live`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running`));
