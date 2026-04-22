@@ -21,15 +21,31 @@ if (fs.existsSync(DB_FILE)) {
 function saveDB() { fs.writeFileSync(DB_FILE, JSON.stringify({ players, globalMatter }, null, 2)); }
 
 app.post('/api/click', (req, res) => {
-    const { userId, userName, action } = req.body;
+    const { userId, userName, action, referrerId } = req.body;
     const now = Date.now();
 
+    // Если игрока еще нет в базе
     if (!players[userId]) {
-        players[userId] = { balance: 0, name: userName || 'Unknown', clickPower: 0.0001, autoPower: 0, lastCheck: now };
+        players[userId] = { 
+            balance: 0, 
+            name: userName || 'Unknown', 
+            clickPower: 0.0001, 
+            autoPower: 0, 
+            lastCheck: now 
+        };
+
+        // ЛОГИКА РЕФЕРАЛА: если есть пригласитель и это не сам игрок
+        if (referrerId && players[referrerId] && referrerId !== userId) {
+            const bonus = 0.0100;
+            if (globalMatter >= bonus) {
+                players[referrerId].balance += bonus;
+                globalMatter -= bonus;
+                console.log(`Игрок ${userId} приглашен пользователем ${referrerId}. Бонус начислен!`);
+            }
+        }
     }
 
-    // Считаем пассивный доход с момента последнего запроса
-    const timePassed = (now - (players[userId].lastCheck || now)) / 1000; // в секундах
+    const timePassed = (now - (players[userId].lastCheck || now)) / 1000;
     const passiveGain = timePassed * (players[userId].autoPower || 0);
     
     if (passiveGain > 0 && globalMatter >= passiveGain) {
@@ -60,14 +76,12 @@ app.post('/api/upgrade', (req, res) => {
         saveDB();
         return res.json({ success: true, balance: player.balance });
     } 
-    
     if (type === 'auto' && player.balance >= 0.0100) {
         player.balance -= 0.0100;
-        player.autoPower = (player.autoPower || 0) + 0.0001; // +0.0001 в секунду
+        player.autoPower = (player.autoPower || 0) + 0.0001;
         saveDB();
         return res.json({ success: true, balance: player.balance });
     }
-
     res.json({ success: false, message: "Недостаточно материи" });
 });
 
