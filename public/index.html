@@ -6,104 +6,81 @@
     <title>THE VOID</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --main-color: #fff; --bg-color: #000; --accent: #222; }
-        body { 
-            background-color: var(--bg-color); color: var(--main-color); margin: 0; 
-            display: flex; flex-direction: column; align-items: center; 
-            height: 100vh; font-family: -apple-system, system-ui, sans-serif; 
-            overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent;
-        }
+        :root { --main-color: #fff; --bg-color: #000; }
+        body { background: var(--bg-color); color: var(--main-color); margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent; }
         
-        #global-container { margin-top: 40px; text-align: center; opacity: 0.5; letter-spacing: 2px; font-size: 0.65rem; }
-        #global-matter { display: block; font-size: 0.8rem; margin-top: 5px; color: #aaa; }
+        #global-container { margin-top: 30px; text-align: center; opacity: 0.4; letter-spacing: 2px; font-size: 0.6rem; }
+        #global-matter { display: block; font-size: 0.75rem; margin-top: 4px; }
 
-        /* Прогресс бар уровня */
-        #level-container { width: 80%; height: 4px; background: #111; margin-top: 20px; border-radius: 2px; overflow: hidden; }
-        #level-bar { width: 0%; height: 100%; background: var(--main-color); transition: width 0.3s ease; box-shadow: 0 0 10px #fff; }
+        /* Уровень */
+        #level-info { width: 85%; display: flex; justify-content: space-between; margin-top: 25px; font-size: 0.65rem; letter-spacing: 1px; color: #666; }
+        #level-container { width: 85%; height: 2px; background: #111; margin-top: 8px; border-radius: 1px; overflow: hidden; }
+        #level-bar { width: 0%; height: 100%; background: #fff; box-shadow: 0 0 10px #fff; transition: width 0.4s; }
 
-        /* Сфера */
-        #sphere-wrapper { position: relative; margin-top: 40px; z-index: 10; }
-        #void-sphere { 
-            width: 200px; height: 200px; 
-            background: radial-gradient(circle, #151515 0%, #000 75%); 
-            border-radius: 50%; border: 1px solid #222;
-            box-shadow: 0 0 30px rgba(255,255,255,0.02);
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
-            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        #void-sphere:active { transform: scale(0.92); border-color: #444; }
+        #sphere-wrapper { position: relative; margin-top: 40px; }
+        #void-sphere { width: 190px; height: 190px; background: radial-gradient(circle, #1a1a1a 0%, #000 70%); border-radius: 50%; border: 1px solid #222; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #void-sphere:active { transform: scale(0.92); }
 
-        #balance { font-size: 3rem; margin-top: 20px; font-weight: 200; font-variant-numeric: tabular-nums; }
-        .label { color: #444; font-size: 0.6rem; letter-spacing: 4px; margin-bottom: 20px; }
+        #balance { font-size: 3rem; margin-top: 25px; font-weight: 200; font-variant-numeric: tabular-nums; }
+        .label { color: #333; font-size: 0.55rem; letter-spacing: 4px; margin-bottom: 20px; }
 
-        /* Панель кнопок */
-        .btn-panel { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 90%; margin-top: auto; padding-bottom: 40px; z-index: 20; }
-        .ui-btn { background: #0a0a0a; border: 1px solid #1a1a1a; color: #eee; padding: 12px; border-radius: 12px; flex: 1; min-width: 80px; text-align: center; cursor: pointer; font-size: 0.6rem; }
-        .ui-btn:active { background: #151515; }
-        .cost { color: #555; display: block; font-size: 0.5rem; margin-top: 4px; }
+        .btn-panel { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 95%; margin-top: auto; padding-bottom: 35px; }
+        .ui-btn { background: #050505; border: 1px solid #151515; color: #aaa; padding: 12px; border-radius: 10px; flex: 1; min-width: 80px; text-align: center; cursor: pointer; font-size: 0.55rem; letter-spacing: 1px; }
+        .ui-btn:active { background: #111; color: #fff; }
+        .cost { color: #444; display: block; font-size: 0.45rem; margin-top: 4px; }
 
-        /* Эффекты вылетающих частиц */
-        .particle { position: fixed; pointer-events: none; background: #fff; border-radius: 50%; z-index: 100; }
-        @keyframes particle-fly {
-            0% { transform: translate(0,0) scale(1); opacity: 1; }
-            100% { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; }
-        }
-        @keyframes flyUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-120px); opacity: 0; } }
-
-        /* Окна (Модалки) */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 200; padding-top: 60px; text-align: center; }
-        .quest-card { background: #080808; border: 1px solid #111; margin: 10px 20px; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; padding-top: 60px; text-align: center; }
+        .quest-card { background: #050505; border: 1px solid #111; margin: 8px 20px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .particle { position: fixed; pointer-events: none; background: #fff; border-radius: 50%; z-index: 50; }
+        @keyframes particle-fly { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; } }
+        @keyframes flyUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <div id="global-container">THE UNIVERSE REMAINS<span id="global-matter">1000.0000</span></div>
+    <div id="global-container">GLOBAL REMAINING<span id="global-matter">1000.0000</span></div>
+    
+    <div id="level-info">
+        <span id="player-level">LEVEL 1</span>
+        <span id="level-next">NEXT LVL</span>
+    </div>
     <div id="level-container"><div id="level-bar"></div></div>
 
-    <div id="sphere-wrapper">
-        <div id="void-sphere"></div>
-    </div>
+    <div id="sphere-wrapper"><div id="void-sphere"></div></div>
 
     <div id="balance">0.0000</div>
-    <div class="label">MATTER EXTRACTED</div>
+    <div class="label">EXTRACTED MATTER</div>
 
     <div class="btn-panel">
         <div class="ui-btn" onclick="toggleModal('leaderboard')">RANK</div>
         <div class="ui-btn" onclick="buyUpgrade('click')">SHARPEN<span class="cost" id="cost-click">...</span></div>
         <div class="ui-btn" onclick="buyUpgrade('auto')">PULSE<span class="cost" id="cost-auto">...</span></div>
-        <div class="ui-btn" onclick="toggleModal('rewards')" style="border-color: #333;">EARN</div>
+        <div class="ui-btn" onclick="toggleModal('rewards')">EARN</div>
     </div>
 
     <div id="leaderboard" class="modal">
-        <div style="letter-spacing: 5px; opacity: 0.3; margin-bottom: 30px;">RANKINGS</div>
+        <div style="letter-spacing: 5px; opacity: 0.2; margin-bottom: 30px;">RANKINGS</div>
         <div id="leader-list"></div>
-        <div class="ui-btn" onclick="toggleModal('leaderboard')" style="width: 100px; margin: 40px auto 0;">BACK</div>
+        <div class="ui-btn" onclick="toggleModal('leaderboard')" style="width: 80px; margin: 40px auto;">BACK</div>
     </div>
 
     <div id="rewards" class="modal">
-        <div style="letter-spacing: 5px; opacity: 0.3; margin-bottom: 30px;">REWARDS</div>
+        <div style="letter-spacing: 5px; opacity: 0.2; margin-bottom: 30px;">REWARDS</div>
         <div class="quest-card">
-            <div style="text-align: left;">
-                <div style="font-size: 0.9rem;">Daily Cycle</div>
-                <div style="font-size: 0.6rem; color: #444;">Claim your reward</div>
-            </div>
+            <div style="text-align: left;"><div style="font-size: 0.8rem;">Daily Bonus</div><div style="font-size: 0.5rem; color: #444;">Claim matter</div></div>
             <div class="ui-btn" onclick="claimDaily()" style="min-width: 60px;">CLAIM</div>
         </div>
         <div class="quest-card">
-            <div style="text-align: left;">
-                <div style="font-size: 0.9rem;">Expansion</div>
-                <div id="ref-count" style="font-size: 0.6rem; color: #444;">Invite 3 friends</div>
-            </div>
+            <div style="text-align: left;"><div style="font-size: 0.8rem;">Expansion</div><div id="ref-count" style="font-size: 0.5rem; color: #444;">Invite 3 friends</div></div>
             <div class="ui-btn" onclick="completeQuest('invite_3')" style="min-width: 60px;">CHECK</div>
         </div>
-        <div class="ui-btn" onclick="inviteFriend()" style="width: 80%; margin: 20px auto;">INVITE FRIENDS</div>
-        <div class="ui-btn" onclick="toggleModal('rewards')" style="width: 100px; margin: 20px auto 0;">BACK</div>
+        <div class="ui-btn" onclick="inviteFriend()" style="width: 80%; margin: 20px auto;">INVITE LINK</div>
+        <div class="ui-btn" onclick="toggleModal('rewards')" style="width: 80px; margin: 10px auto;">BACK</div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        tg.ready(); tg.expand();
 
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
         const userName = tg.initDataUnsafe?.user?.first_name || 'Guest';
@@ -112,29 +89,18 @@
         let currentBalance = 0;
         let autoPower = 0;
 
-        // Эффект частиц
         function createParticles(x, y) {
-            for (let i = 0; i < 8; i++) {
-                const p = document.createElement('div');
-                p.className = 'particle';
-                const size = Math.random() * 3 + 1;
-                p.style.width = size + 'px';
-                p.style.height = size + 'px';
-                p.style.left = x + 'px';
-                p.style.top = y + 'px';
-                
-                const tx = (Math.random() - 0.5) * 160;
-                const ty = (Math.random() - 0.5) * 160;
-                p.style.setProperty('--x', tx + 'px');
-                p.style.setProperty('--y', ty + 'px');
+            for (let i = 0; i < 6; i++) {
+                const p = document.createElement('div'); p.className = 'particle';
+                const size = Math.random() * 2 + 1; p.style.width = p.style.height = size + 'px';
+                p.style.left = x + 'px'; p.style.top = y + 'px';
+                const tx = (Math.random() - 0.5) * 140; const ty = (Math.random() - 0.5) * 140;
+                p.style.setProperty('--x', tx + 'px'); p.style.setProperty('--y', ty + 'px');
                 p.style.animation = 'particle-fly 0.6s ease-out forwards';
-                
-                document.body.appendChild(p);
-                setTimeout(() => p.remove(), 600);
+                document.body.appendChild(p); setTimeout(() => p.remove(), 600);
             }
         }
 
-        // Основной запрос данных
         async function apiRequest(action = 'load') {
             try {
                 const res = await fetch('/api/click', {
@@ -143,7 +109,6 @@
                     body: JSON.stringify({ userId, userName, action, referrerId })
                 });
                 const data = await res.json();
-                
                 currentBalance = data.balance;
                 autoPower = data.autoPower || 0;
                 
@@ -151,22 +116,22 @@
                 document.getElementById('global-matter').innerText = data.globalMatter.toFixed(4);
                 document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
                 document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
-                document.getElementById('ref-count').innerText = `Friends: ${data.referralCount || 0}/3`;
+                document.getElementById('player-level').innerText = `LEVEL ${data.level}`;
+                document.getElementById('ref-count').innerText = `Invite 3 friends (${data.referralCount}/3)`;
 
-                const progress = (currentBalance * 500) % 100; 
+                // Прогресс до следующего уровня (0.1 материи на уровень)
+                const progress = ((data.totalExtracted % 0.1) / 0.1) * 100;
                 document.getElementById('level-bar').style.width = progress + '%';
-            } catch (e) { console.error("API Error:", e); }
+            } catch (e) { console.error(e); }
         }
 
-        // Клик по сфере
         document.getElementById('void-sphere').onclick = (e) => {
             createParticles(e.clientX, e.clientY);
             const flyText = document.createElement('div');
-            flyText.innerText = '+';
-            flyText.style.position = 'fixed'; flyText.style.left = e.clientX + 'px'; flyText.style.top = e.clientY + 'px';
+            flyText.innerText = '+'; flyText.style.position = 'fixed';
+            flyText.style.left = e.clientX + 'px'; flyText.style.top = e.clientY + 'px';
             flyText.style.color = '#fff'; flyText.style.animation = 'flyUp 1s forwards';
-            document.body.appendChild(flyText);
-            setTimeout(() => flyText.remove(), 1000);
+            document.body.appendChild(flyText); setTimeout(() => flyText.remove(), 1000);
 
             tg.HapticFeedback.impactOccurred('light');
             currentBalance += 0.0001; 
@@ -175,20 +140,13 @@
         };
 
         async function buyUpgrade(type) {
-            try {
-                const res = await fetch('/api/upgrade', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, type })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    tg.HapticFeedback.notificationOccurred('success');
-                    apiRequest('load');
-                } else {
-                    tg.showAlert(data.message);
-                }
-            } catch (e) { console.error(e); }
+            const res = await fetch('/api/upgrade', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, type })
+            });
+            const data = await res.json();
+            if (data.success) { tg.HapticFeedback.notificationOccurred('success'); apiRequest('load'); }
+            else tg.showAlert(data.message);
         }
 
         function toggleModal(id) {
@@ -199,66 +157,43 @@
         }
 
         async function loadLeaderboard() {
-            try {
-                const res = await fetch('/api/leaderboard');
-                const leaders = await res.json();
-                document.getElementById('leader-list').innerHTML = leaders.map((p, i) => `
-                    <div style="display:flex; justify-content:space-between; width: 85%; margin: 10px auto; padding:10px; border-bottom:1px solid #111; font-size: 0.8rem; font-family: monospace;">
-                        <span>${i+1}. ${p.name}</span><span>${p.balance.toFixed(4)}</span>
-                    </div>`).join('');
-            } catch (e) { console.error(e); }
+            const res = await fetch('/api/leaderboard');
+            const leaders = await res.json();
+            document.getElementById('leader-list').innerHTML = leaders.map((p, i) => `
+                <div style="display:flex; justify-content:space-between; width: 85%; margin: 10px auto; padding:8px; border-bottom:1px solid #111; font-size: 0.75rem; font-family: monospace; color: #666;">
+                    <span>${i+1}. ${p.name}</span><span>${p.balance.toFixed(4)}</span>
+                </div>`).join('');
         }
 
         async function claimDaily() {
-            try {
-                const res = await fetch('/api/daily-bonus', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    tg.showAlert(`Bonus +${data.amount.toFixed(4)}!`);
-                    apiRequest('load');
-                } else tg.showAlert(data.message);
-            } catch (e) { console.error(e); }
+            const res = await fetch('/api/daily-bonus', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+            const data = await res.json();
+            if (data.success) { tg.showAlert(`Claimed +${data.amount.toFixed(4)}!`); apiRequest('load'); }
+            else tg.showAlert(data.message);
         }
 
         async function completeQuest(questId) {
-            try {
-                const res = await fetch('/api/complete-quest', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, questId })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    tg.showAlert('Quest completed!');
-                    apiRequest('load');
-                } else tg.showAlert(data.message);
-            } catch (e) { console.error(e); }
+            const res = await fetch('/api/complete-quest', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, questId })
+            });
+            const data = await res.json();
+            if (data.success) { tg.showAlert('Quest completed!'); apiRequest('load'); }
+            else tg.showAlert(data.message);
         }
 
         function inviteFriend() {
-            const botUsername = 'void_clicker_bot'; // <--- ЗАМЕНИ НА СВОЕГО БОТА
+            const botUsername = 'void_clicker_bot'; // ЗАМЕНИ НА СВОЙ
             const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
-            const shareText = `Join me in extracting The Void! 🌑`;
-            const fullUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
+            const fullUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join the Void extraction!')}`;
             tg.openTelegramLink(fullUrl);
         }
 
-        // Авто-баланс раз в секунду
-        setInterval(() => {
-            if (autoPower > 0) {
-                currentBalance += autoPower;
-                document.getElementById('balance').innerText = currentBalance.toFixed(4);
-            }
-        }, 1000);
-
-        // Синхронизация раз в 15 секунд
+        setInterval(() => { if (autoPower > 0) { currentBalance += autoPower; document.getElementById('balance').innerText = currentBalance.toFixed(4); } }, 1000);
         setInterval(() => apiRequest('load'), 15000);
-
-        // Запуск
         apiRequest('load');
     </script>
 </body>
