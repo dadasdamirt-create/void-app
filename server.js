@@ -1,10 +1,15 @@
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
+const axios = require('axios'); // Добавь axios для запросов к API Telegram
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ДАННЫЕ ДЛЯ КВЕСТА (ЗАМЕНИ НА СВОИ)
+const BOT_TOKEN = "ТВОЙ_ТОКЕН_ОТ_BOTFATHER";
+const CHANNEL_ID = "-100XXXXXXXXXX"; // ID твоего канала
 
 const MONGO_URI = process.env.MONGO_URI; 
 mongoose.connect(MONGO_URI).then(() => console.log("БАЗА ПОДКЛЮЧЕНА"));
@@ -30,24 +35,19 @@ const Player = mongoose.model('Player', playerSchema);
 const State = mongoose.model('State', new mongoose.Schema({
     key: { type: String, default: "global" },
     globalMatter: { type: Number, default: 1000.0000 },
-    eventActive: { type: Boolean, default: false }, // АКТИВЕН ЛИ ИВЕНТ
-    eventEndTime: { type: Number, default: 0 }      // КОГДА КОНЧИТСЯ
+    eventActive: { type: Boolean, default: false },
+    eventEndTime: { type: Number, default: 0 }
 }));
 
 async function getGlobalState() {
     let state = await State.findOne({ key: "global" });
     if (!state) state = await State.create({ key: "global" });
-
-    // ЛОГИКА ЗАПУСКА ИВЕНТА
     const now = Date.now();
-    if (!state.eventActive && Math.random() < 0.01) { // 1% шанс при запросе запустить ивент
-        state.eventActive = true;
-        state.eventEndTime = now + 30000; // на 30 секунд
+    if (!state.eventActive && Math.random() < 0.01) {
+        state.eventActive = true; state.eventEndTime = now + 30000;
         await state.save();
-        console.log("EVENT STARTED!");
     } else if (state.eventActive && now > state.eventEndTime) {
-        state.eventActive = false;
-        await state.save();
+        state.eventActive = false; await state.save();
     }
     return state;
 }
@@ -56,13 +56,13 @@ const getUpgradeCost = (base, level) => base * Math.pow(1.5, level);
 const getPlayerLevel = (total) => Math.floor(total / 0.5) + 1;
 const skinBonuses = { 'white': 1.0, 'gold': 1.05, 'plasma': 1.15 };
 
+// API ДЛЯ КЛИКОВ (БЕЗ ИЗМЕНЕНИЙ)
 app.post('/api/click', async (req, res) => {
     try {
         const { userId, userName, action, referrerId } = req.body;
         const now = Date.now();
         let player = await Player.findOne({ userId });
         let state = await getGlobalState();
-
         if (!player) {
             player = new Player({ userId, name: userName || 'Unknown', lastCheck: now });
             if (referrerId && referrerId !== userId) {
@@ -70,51 +70,56 @@ app.post('/api/click', async (req, res) => {
                 if (ref) { ref.balance += 0.01; ref.referralCount += 1; await ref.save(); state.globalMatter -= 0.01; }
             }
         }
-
         const level = getPlayerLevel(player.totalExtracted);
         const skinMult = skinBonuses[player.currentSkin] || 1.0;
         let totalMult = (1 + (level - 1) * 0.01) * skinMult;
-
-        // ПРИМЕНЯЕМ МНОЖИТЕЛЬ ИВЕНТА
         if (state.eventActive) totalMult *= 5;
-
         const autoPower = player.autoLevel * 0.0001 * totalMult; 
         const passiveGain = ((now - player.lastCheck) / 1000) * autoPower;
-        
-        if (passiveGain > 0 && state.globalMatter >= passiveGain) {
-            player.balance += passiveGain;
-            player.totalExtracted += passiveGain;
-            state.globalMatter -= passiveGain;
-        }
+        if (passiveGain > 0 && state.globalMatter >= passiveGain) { player.balance += passiveGain; player.totalExtracted += passiveGain; state.globalMatter -= passiveGain; }
         player.lastCheck = now;
-
         if (action === 'click' && (now - player.lastClickTime >= 100)) {
             const clickPower = (0.0001 + (player.clickLevel - 1) * 0.0001) * totalMult;
-            if (state.globalMatter >= clickPower) {
-                player.balance += clickPower;
-                player.totalExtracted += clickPower;
-                state.globalMatter -= clickPower;
-                player.lastClickTime = now;
-            }
+            if (state.globalMatter >= clickPower) { player.balance += clickPower; player.totalExtracted += clickPower; state.globalMatter -= clickPower; player.lastClickTime = now; }
         }
-
-        await player.save();
-        await state.save();
-
-        res.json({ 
-            balance: player.balance, 
-            globalMatter: state.globalMatter, 
-            autoPower, level, totalExtracted: player.totalExtracted,
-            currentSkin: player.currentSkin, ownedSkins: player.ownedSkins,
-            eventActive: state.eventActive, // Передаем статус ивента
-            eventTimeLeft: Math.max(0, state.eventEndTime - now),
-            nextClickCost: getUpgradeCost(0.005, player.clickLevel - 1), 
-            nextAutoCost: getUpgradeCost(0.01, player.autoLevel) 
-        });
+        await player.save(); await state.save();
+        res.json({ balance: player.balance, globalMatter: state.globalMatter, autoPower, level, totalExtracted: player.totalExtracted, currentSkin: player.currentSkin, ownedSkins: player.ownedSkins, eventActive: state.eventActive, eventTimeLeft: Math.max(0, state.eventEndTime - now), nextClickCost: getUpgradeCost(0.005, player.clickLevel - 1), nextAutoCost: getUpgradeCost(0.01, player.autoLevel), referralCount: player.referralCount });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// (Остальные методы /api/skin, /api/upgrade, /api/daily-bonus, /api/complete-quest, /api/leaderboard остаются БЕЗ ИЗМЕНЕНИЙ)
+// КВЕСТЫ С ПРОВЕРКОЙ ПОДПИСКИ
+app.post('/api/complete-quest', async (req, res) => {
+    try {
+        const { userId, questId } = req.body;
+        const player = await Player.findOne({ userId });
+        if (!player || player.completedQuests.includes(questId)) return res.json({ success: false, message: "Done" });
+
+        if (questId === 'sub_tg') {
+            // Запрос к Telegram API для проверки подписки
+            const url = `https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${CHANNEL_ID}&user_id=${userId}`;
+            const response = await axios.get(url);
+            const status = response.data.result.status;
+
+            // Статусы: 'member', 'administrator', 'creator' означают подписку
+            if (['member', 'administrator', 'creator'].includes(status)) {
+                player.balance += 0.1000;
+                player.completedQuests.push(questId);
+                await player.save();
+                return res.json({ success: true, balance: player.balance });
+            } else {
+                return res.json({ success: false, message: "Вы не подписаны!" });
+            }
+        }
+
+        if (questId === 'invite_3' && player.referralCount >= 3) {
+            player.balance += 0.15; player.completedQuests.push(questId); await player.save();
+            return res.json({ success: true });
+        }
+        res.json({ success: false });
+    } catch (e) { res.json({ success: false, message: "Ошибка проверки" }); }
+});
+
+// (Остальные роуты /api/skin, /api/upgrade, /api/daily-bonus, /api/leaderboard без изменений)
 app.post('/api/skin', async (req, res) => {
     const { userId, skinId, action } = req.body;
     const player = await Player.findOne({ userId });
@@ -152,16 +157,6 @@ app.post('/api/daily-bonus', async (req, res) => {
     player.lastBonusClaim = now;
     await player.save();
     res.json({ success: true, balance: player.balance, amount: bonus });
-});
-app.post('/api/complete-quest', async (req, res) => {
-    const { userId, questId } = req.body;
-    const player = await Player.findOne({ userId });
-    if (player.completedQuests.includes(questId)) return res.json({ success: false });
-    if (questId === 'invite_3' && player.referralCount >= 3) {
-        player.balance += 0.15; player.completedQuests.push(questId); await player.save();
-        return res.json({ success: true });
-    }
-    res.json({ success: false });
 });
 app.get('/api/leaderboard', async (req, res) => {
     const leaders = await Player.find().sort({ balance: -1 }).limit(10);
