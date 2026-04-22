@@ -13,7 +13,7 @@ const playerSchema = new mongoose.Schema({
     userId: { type: String, unique: true },
     name: String,
     balance: { type: Number, default: 0 },
-    totalExtracted: { type: Number, default: 0 }, // Общая добыча для XP
+    totalExtracted: { type: Number, default: 0 },
     clickLevel: { type: Number, default: 1 },
     autoLevel: { type: Number, default: 0 },
     lastCheck: { type: Number, default: Date.now },
@@ -37,8 +37,8 @@ async function getGlobalState() {
 }
 
 const getUpgradeCost = (base, level) => base * Math.pow(1.5, level);
-// Формула уровня: каждые 0.1 материи — новый уровень
-const getPlayerLevel = (total) => Math.floor(total / 0.1) + 1;
+// НОВЫЙ БАЛАНС: Новый уровень каждые 0.5 материи
+const getPlayerLevel = (total) => Math.floor(total / 0.5) + 1;
 
 app.post('/api/click', async (req, res) => {
     try {
@@ -56,7 +56,8 @@ app.post('/api/click', async (req, res) => {
         }
 
         const level = getPlayerLevel(player.totalExtracted);
-        const levelMultiplier = 1 + (level - 1) * 0.05; // +5% за уровень
+        // МНОЖИТЕЛЬ: всего +1% за уровень (плавный рост)
+        const levelMultiplier = 1 + (level - 1) * 0.01; 
 
         const autoPower = player.autoLevel * 0.0001 * levelMultiplier; 
         const passiveGain = ((now - player.lastCheck) / 1000) * autoPower;
@@ -93,6 +94,7 @@ app.post('/api/click', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// АПГРЕЙДЫ (без изменений)
 app.post('/api/upgrade', async (req, res) => {
     const { userId, type } = req.body;
     const player = await Player.findOne({ userId });
@@ -106,6 +108,7 @@ app.post('/api/upgrade', async (req, res) => {
     } else res.json({ success: false, message: "No matter" });
 });
 
+// БОНУСЫ (без изменений)
 app.post('/api/daily-bonus', async (req, res) => {
     const { userId } = req.body;
     const player = await Player.findOne({ userId });
@@ -120,6 +123,7 @@ app.post('/api/daily-bonus', async (req, res) => {
     res.json({ success: true, balance: player.balance, amount: bonus });
 });
 
+// КВЕСТЫ (без изменений)
 app.post('/api/complete-quest', async (req, res) => {
     const { userId, questId } = req.body;
     const player = await Player.findOne({ userId });
