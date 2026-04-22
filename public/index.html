@@ -9,17 +9,15 @@
         body { background-color: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 60px; height: 100vh; font-family: sans-serif; overflow: hidden; user-select: none; }
         #global-container { text-align: center; color: #444; letter-spacing: 2px; font-size: 0.7rem; margin-bottom: 20px; }
         #global-matter { color: #888; font-size: 0.9rem; display: block; }
-        #void-sphere { width: 180px; height: 180px; background: radial-gradient(circle, #222 0%, #000 80%); border-radius: 50%; border: 2px solid #333; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.05s ease; }
+        #void-sphere { width: 180px; height: 180px; background: radial-gradient(circle, #222 0%, #000 80%); border-radius: 50%; border: 2px solid #333; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.05s ease; box-shadow: 0 0 20px rgba(255,255,255,0.05); }
         #void-sphere:active { transform: scale(0.95); }
-        #balance { font-size: 2.8rem; margin-top: 20px; font-weight: 100; }
+        #balance { font-size: 2.8rem; margin-top: 20px; font-weight: 100; font-variant-numeric: tabular-nums; }
         .label { color: #333; font-size: 0.6rem; letter-spacing: 4px; margin-bottom: 20px; }
         .btn-panel { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 95%; }
-        .ui-btn { color: #ccc; font-size: 0.5rem; letter-spacing: 1px; cursor: pointer; border: 1px solid #222; padding: 10px; border-radius: 8px; background: #050505; flex: 1; min-width: 80px; text-align: center; }
-        
-        /* Модальные окна */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; padding-top: 50px; text-align: center; }
-        .quest-card { background: #111; border: 1px solid #222; margin: 10px 20px; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        
+        .ui-btn { color: #ccc; font-size: 0.5rem; letter-spacing: 1px; cursor: pointer; border: 1px solid #222; padding: 10px; border-radius: 8px; background: #050505; flex: 1; min-width: 80px; text-align: center; line-height: 1.4; }
+        .cost { color: #555; display: block; font-size: 0.45rem; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 100; padding-top: 50px; text-align: center; }
+        .quest-card { background: #0a0a0a; border: 1px solid #1a1a1a; margin: 10px 20px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
         @keyframes flyUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
     </style>
 </head>
@@ -32,36 +30,43 @@
 
     <div class="btn-panel">
         <div class="ui-btn" onclick="toggleModal('leaderboard')">TOP</div>
-        <div class="ui-btn" onclick="buyUpgrade('click')">CLICK+<br><span id="cost-click">...</span></div>
-        <div class="ui-btn" onclick="buyUpgrade('auto')">AUTO+<br><span id="cost-auto">...</span></div>
-        <div class="ui-btn" onclick="toggleModal('rewards')" style="background:#1a1a1a;">REWARDS</div>
+        <div class="ui-btn" onclick="buyUpgrade('click')">CLICK+<br><span class="cost" id="cost-click">...</span></div>
+        <div class="ui-btn" onclick="buyUpgrade('auto')">AUTO+<br><span class="cost" id="cost-auto">...</span></div>
+        <div class="ui-btn" onclick="toggleModal('rewards')" style="background:#111;">REWARDS</div>
     </div>
 
-    <!-- Таблица лидеров -->
     <div id="leaderboard" class="modal">
         <div style="letter-spacing:5px; color:#555; margin-bottom:20px;">RANKINGS</div>
-        <div id="leader-list" style="width:80%; margin:0 auto;"></div>
+        <div id="leader-list" style="width:85%; margin:0 auto;"></div>
         <div class="ui-btn" onclick="toggleModal('leaderboard')" style="width:100px; margin:20px auto;">CLOSE</div>
     </div>
 
-    <!-- Награды и Квесты -->
     <div id="rewards" class="modal">
-        <div style="letter-spacing:5px; color:#555; margin-bottom:20px;">REWARDS</div>
+        <div style="letter-spacing:5px; color:#555; margin-bottom:20px;">REWARDS & QUESTS</div>
         
         <div class="quest-card">
             <div style="text-align:left;">
-                <div style="font-size:0.9rem;">Daily Bonus</div>
-                <div style="font-size:0.6rem; color:#555;">Заходи каждый день</div>
+                <div style="font-size:0.8rem;">Daily Bonus</div>
+                <div style="font-size:0.5rem; color:#444;">Забирай каждый день</div>
             </div>
-            <div class="ui-btn" onclick="claimDaily()" style="min-width:60px;">CLAIM</div>
+            <div class="ui-btn" onclick="claimDaily()" style="min-width:60px; font-size:0.4rem;">CLAIM</div>
         </div>
 
         <div class="quest-card">
             <div style="text-align:left;">
-                <div style="font-size:0.9rem;">Join Channel</div>
-                <div style="font-size:0.6rem; color:#555;">+0.0500 Matter</div>
+                <div style="font-size:0.8rem;">Invite 3 Friends</div>
+                <div style="font-size:0.5rem; color:#444;">Награда: +0.1500</div>
+                <div id="ref-count" style="font-size:0.5rem; color:#00ff00;">Friends: 0/3</div>
             </div>
-            <div class="ui-btn" onclick="completeQuest('sub_tg')" style="min-width:60px;">GO</div>
+            <div class="ui-btn" onclick="completeQuest('invite_3')" style="min-width:60px; font-size:0.4rem;">CHECK</div>
+        </div>
+
+        <div class="quest-card">
+            <div style="text-align:left;">
+                <div style="font-size:0.8rem;">Invite Link</div>
+                <div style="font-size:0.5rem; color:#444;">Позови друга</div>
+            </div>
+            <div class="ui-btn" onclick="inviteFriend()" style="min-width:60px; font-size:0.4rem;">SEND</div>
         </div>
 
         <div class="ui-btn" onclick="toggleModal('rewards')" style="width:100px; margin:20px auto;">CLOSE</div>
@@ -72,23 +77,40 @@
         tg.expand();
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
         const userName = tg.initDataUnsafe?.user?.first_name || 'Guest';
+        const referrerId = tg.initDataUnsafe?.start_param || null;
 
         let currentBalance = 0;
         let autoPower = 0;
 
         async function apiRequest(action = 'load') {
-            const res = await fetch('/api/click', {
+            try {
+                const res = await fetch('/api/click', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId, userName, action, referrerId })
+                });
+                const data = await res.json();
+                currentBalance = data.balance;
+                autoPower = data.autoPower || 0;
+                document.getElementById('balance').innerText = currentBalance.toFixed(4);
+                document.getElementById('global-matter').innerText = data.globalMatter.toFixed(4);
+                document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
+                document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
+                document.getElementById('ref-count').innerText = `Friends: ${data.referralCount}/3`;
+            } catch (e) { console.error(e); }
+        }
+
+        async function buyUpgrade(type) {
+            const res = await fetch('/api/upgrade', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, userName, action })
+                body: JSON.stringify({ userId, type })
             });
             const data = await res.json();
-            currentBalance = data.balance;
-            autoPower = data.autoPower || 0;
-            document.getElementById('balance').innerText = currentBalance.toFixed(4);
-            document.getElementById('global-matter').innerText = data.globalMatter.toFixed(4);
-            document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
-            document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
+            if (data.success) {
+                tg.HapticFeedback.notificationOccurred('success');
+                apiRequest('load');
+            } else tg.showAlert(data.message);
         }
 
         async function claimDaily() {
@@ -99,14 +121,12 @@
             });
             const data = await res.json();
             if (data.success) {
-                tg.showAlert(`Бонус получен: +${data.amount.toFixed(4)}! День: ${data.streak}`);
+                tg.showAlert(`Бонус +${data.amount.toFixed(4)} получен!`);
                 apiRequest('load');
-            } else tg.showPopup({ message: data.message });
+            } else tg.showAlert(data.message);
         }
 
         async function completeQuest(questId) {
-            if (questId === 'sub_tg') tg.openTelegramLink('https://t.me/the_woid_cliccker'); // Замени на свой канал
-            
             const res = await fetch('/api/complete-quest', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -114,9 +134,17 @@
             });
             const data = await res.json();
             if (data.success) {
-                tg.showAlert('Квест выполнен! Награда начислена.');
+                tg.showAlert('Квест выполнен!');
                 apiRequest('load');
-            }
+            } else tg.showAlert(data.message);
+        }
+
+        function inviteFriend() {
+            const botUsername = 'твой_бот'; // ЗАМЕНИ НА СВОЕГО БОТА
+            const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
+            const shareText = `Присоединяйся к извлечению Пустоты! Получи бонус по моей ссылке.`;
+            const fullUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
+            tg.openTelegramLink(fullUrl);
         }
 
         function toggleModal(id) {
@@ -129,20 +157,9 @@
             const res = await fetch('/api/leaderboard');
             const leaders = await res.json();
             document.getElementById('leader-list').innerHTML = leaders.map((p, i) => `
-                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #111;">
+                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #111; font-size: 0.8rem;">
                     <span>${i+1}. ${p.name}</span><span>${p.balance.toFixed(4)}</span>
                 </div>`).join('');
-        }
-
-        async function buyUpgrade(type) {
-            const res = await fetch('/api/upgrade', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, type })
-            });
-            const data = await res.json();
-            if (data.success) { apiRequest('load'); tg.HapticFeedback.notificationOccurred('success'); }
-            else tg.showAlert(data.message);
         }
 
         document.getElementById('void-sphere').onclick = (e) => {
@@ -152,7 +169,7 @@
             flyText.style.animation = 'flyUp 1s forwards'; document.body.appendChild(flyText);
             setTimeout(() => flyText.remove(), 1000);
             tg.HapticFeedback.impactOccurred('light');
-            currentBalance += 0.0001;
+            currentBalance += 0.0001; 
             document.getElementById('balance').innerText = currentBalance.toFixed(4);
             apiRequest('click');
         };
