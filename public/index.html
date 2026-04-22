@@ -1,155 +1,83 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>THE VOID</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { background-color: #000; color: #fff; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 80px; height: 100vh; font-family: sans-serif; overflow: hidden; user-select: none; }
-        #global-container { text-align: center; color: #444; letter-spacing: 2px; font-size: 0.7rem; margin-bottom: 20px; }
-        #global-matter { color: #888; font-size: 0.9rem; display: block; }
-        #void-sphere { width: 170px; height: 170px; background: radial-gradient(circle, #222 0%, #000 80%); border-radius: 50%; border: 2px solid #333; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.05s ease; }
-        #void-sphere:active { transform: scale(0.95); }
-        #balance { font-size: 2.8rem; margin-top: 20px; font-weight: 100; font-variant-numeric: tabular-nums; }
-        .label { color: #333; font-size: 0.6rem; letter-spacing: 4px; margin-bottom: 20px; }
-        .btn-panel { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 95%; }
-        .ui-btn { color: #ccc; font-size: 0.5rem; letter-spacing: 1px; cursor: pointer; border: 1px solid #333; padding: 10px; border-radius: 8px; background: #050505; flex: 1; min-width: 80px; text-align: center; }
-        @keyframes flyUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
-    </style>
-</head>
-<body>
+const tg = window.Telegram.WebApp;
+tg.expand();
 
-    <div id="global-container">TOTAL VOID REMAINING<span id="global-matter">1000.0000</span></div>
-    <div id="void-sphere"></div>
-    <div id="balance">0.0000</div>
-    <div class="label">MY MATTER</div>
+const balanceDisplay = document.getElementById('balance');
+const globalDisplay = document.getElementById('global-matter');
+const sphere = document.getElementById('void-sphere');
+const costClickEl = document.getElementById('cost-click'); // Убедись, что такие ID есть в HTML
+const costAutoEl = document.getElementById('cost-auto');
 
-   <div class="btn-panel">
-    <div class="ui-btn" onclick="toggleLeaderboard()">TOP 10</div>
-    <div class="ui-btn" onclick="buyUpgrade('click')">
-        UPGRADE CLICK<br><span id="cost-click">0.0050</span>
-    </div>
-    <div class="ui-btn" onclick="buyUpgrade('auto')">
-        BUY AUTO<br><span id="cost-auto">0.0100</span>
-    </div>
-</div>
+const userId = tg.initDataUnsafe?.user?.id || 'guest';
+const userName = tg.initDataUnsafe?.user?.first_name || 'Guest';
+const referrerId = tg.initDataUnsafe?.start_param || null;
 
-<script>
-    // Обнови функцию apiRequest, чтобы она обновляла цены на кнопках
-    async function apiRequest(action = 'load') {
+let currentBalance = 0;
+let autoPower = 0;
+
+async function apiRequest(action = 'load') {
+    try {
         const res = await fetch('/api/click', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, userName, action })
+            body: JSON.stringify({ userId, userName, action, referrerId })
         });
         const data = await res.json();
         
         currentBalance = data.balance;
-        autoPower = data.autoLevel * 0.0001; // Обновляем силу автокликера
+        autoPower = data.autoPower || 0;
         
         balanceDisplay.innerText = currentBalance.toFixed(4);
         globalDisplay.innerText = data.globalMatter.toFixed(4);
         
-        // Обновляем цены на кнопках
-        document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
-        document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
-    }
-
-    <div id="leaderboard" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:100; padding-top:60px; text-align:center;">
-        <div style="letter-spacing:5px; color:#555; margin-bottom:20px;">TOP EXTRACTORS</div>
-        <div id="leader-list" style="width:80%; margin:20px auto;"></div>
-        <div class="ui-btn" onclick="toggleLeaderboard()" style="width:100px; margin:0 auto;">CLOSE</div>
-    </div>
-
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        const balanceDisplay = document.getElementById('balance');
-        const globalDisplay = document.getElementById('global-matter');
-        const sphere = document.getElementById('void-sphere');
+        // Обновляем текст на кнопках апгрейда
+        if (costClickEl) costClickEl.innerText = data.nextClickCost.toFixed(4);
+        if (costAutoEl) costAutoEl.innerText = data.nextAutoCost.toFixed(4);
         
-        const userId = tg.initDataUnsafe?.user?.id || 'guest';
-        const userName = tg.initDataUnsafe?.user?.first_name || 'Guest';
-        // Получаем ID пригласителя из ссылки
-        const referrerId = tg.initDataUnsafe?.start_param || null;
+    } catch (e) { console.error(e); }
+}
 
-        let currentBalance = 0;
-        let autoPower = 0;
+// Визуальное обновление каждую секунду
+setInterval(() => {
+    if (autoPower > 0) {
+        currentBalance += autoPower;
+        balanceDisplay.innerText = currentBalance.toFixed(4);
+    }
+}, 1000);
 
-        async function apiRequest(action = 'load') {
-            const res = await fetch('/api/click', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, userName, action, referrerId })
-            });
-            const data = await res.json();
-            currentBalance = data.balance;
-            autoPower = data.autoPower || 0;
-            updateDisplay(data.globalMatter);
-        }
+// Синхронизация раз в 10 сек
+setInterval(() => apiRequest('load'), 10000);
 
-        function updateDisplay(global) {
-            balanceDisplay.innerText = currentBalance.toFixed(4);
-            if (global) globalDisplay.innerText = global.toFixed(4);
-        }
-
-        function inviteFriend() {
-            // ТУТ ВАЖНО: замени 'ТВОЙ_БОТ' на юзернейм твоего бота без @
-            const botUsername = 'void_clicker_bot'; 
-            const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
-            const shareText = `Присоединяйся к извлечению Пустоты! Получи бонус по моей ссылке.`;
-            const fullUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(shareText)}`;
-            tg.openTelegramLink(fullUrl);
-        }
-
-        setInterval(() => {
-            if (autoPower > 0) {
-                currentBalance += autoPower;
-                balanceDisplay.innerText = currentBalance.toFixed(4);
-            }
-        }, 1000);
-
-        setInterval(() => apiRequest('load'), 10000);
-
-        async function buyUpgrade(type) {
-            const res = await fetch('/api/upgrade', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, type })
-            });
-            const data = await res.json();
-            if (data.success) {
-                tg.showAlert('Улучшено!');
-                apiRequest('load');
-            } else tg.showAlert(data.message);
-        }
-
-        async function toggleLeaderboard() {
-            const el = document.getElementById('leaderboard');
-            el.style.display = (el.style.display === 'block') ? 'none' : 'block';
-            if (el.style.display === 'block') {
-                const res = await fetch('/api/leaderboard');
-                const leaders = await res.json();
-                document.getElementById('leader-list').innerHTML = leaders.map((p, i) => `
-                    <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #111;">
-                        <span>${i+1}. ${p.name}</span><span>${p.balance.toFixed(4)}</span>
-                    </div>`).join('');
-            }
-        }
-
-        sphere.onclick = (e) => {
-            const flyText = document.createElement('div');
-            flyText.innerText = '+';
-            flyText.style.position = 'fixed'; flyText.style.left = e.clientX + 'px'; flyText.style.top = e.clientY + 'px';
-            flyText.style.animation = 'flyUp 1s forwards'; document.body.appendChild(flyText);
-            setTimeout(() => flyText.remove(), 1000);
-            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
-            currentBalance += 0.0001;
-            apiRequest('click');
-        };
-
+// Функция покупки
+async function buyUpgrade(type) {
+    const res = await fetch('/api/upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, type })
+    });
+    const data = await res.json();
+    if (data.success) {
+        tg.showAlert('Улучшено!');
         apiRequest('load');
-    </script>
-</body>
-</html>
+    } else {
+        tg.showAlert(data.message);
+    }
+}
+
+sphere.onclick = (e) => {
+    // Визуальный эффект
+    const flyText = document.createElement('div');
+    flyText.innerText = '+';
+    flyText.style.position = 'fixed'; flyText.style.left = e.clientX + 'px'; flyText.style.top = e.clientY + 'px';
+    flyText.style.animation = 'flyUp 1s forwards'; document.body.appendChild(flyText);
+    setTimeout(() => flyText.remove(), 1000);
+
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+    
+    // Временно прибавляем визуально (базовый клик, сервер пришлет точный)
+    currentBalance += 0.0001; 
+    balanceDisplay.innerText = currentBalance.toFixed(4);
+    
+    apiRequest('click');
+};
+
+apiRequest('load');
