@@ -44,4 +44,21 @@ app.post('/api/click', (req, res) => {
     }
 
     res.json({ 
-        balance: players[userId].ba
+        balance: players[userId].balance, 
+        globalMatter: globalMatter 
+    });
+});
+
+// API для таблицы лидеров
+app.get('/api/leaderboard', (req, res) => {
+    const leaderboard = Object.values(players)
+        .sort((a, b) => b.balance - a.balance)
+        .slice(0, 10);
+    res.json(leaderboard);
+});
+
+// Запуск сервера на порту, который выдает Render
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`VOID Server is running on port ${PORT}`);
+});
