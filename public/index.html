@@ -6,39 +6,24 @@
     <title>THE VOID</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --main-color: #fff; --bg-color: #000; }
-        body { 
-            background: var(--bg-color); color: var(--main-color); margin: 0; 
-            display: flex; flex-direction: column; align-items: center; 
-            height: 100vh; font-family: -apple-system, system-ui, sans-serif; 
-            overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent; 
-        }
+        :root { --main-color: #fff; --bg-color: #000; --skin-color: #fff; }
+        body { background: var(--bg-color); color: var(--main-color); margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent; }
         
         #global-container { margin-top: 30px; text-align: center; opacity: 0.4; letter-spacing: 2px; font-size: 0.6rem; }
         #global-matter { display: block; font-size: 0.75rem; margin-top: 4px; }
 
-        /* Прогресс бар уровня */
         #level-info { width: 85%; display: flex; justify-content: space-between; margin-top: 25px; font-size: 0.65rem; font-weight: bold; color: #888; }
-        #level-container { 
-            width: 85%; height: 8px; background: #111; 
-            margin-top: 8px; border-radius: 10px; 
-            border: 1px solid #222; overflow: hidden; 
-            position: relative;
-        }
-        #level-bar { 
-            width: 2%; /* Минимум 2%, чтобы было видно полоску всегда */
-            height: 100%; background: #fff; 
-            box-shadow: 0 0 15px #fff; 
-            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
-        }
+        #level-container { width: 85%; height: 6px; background: #111; margin-top: 8px; border-radius: 10px; border: 1px solid #222; overflow: hidden; }
+        #level-bar { width: 2%; height: 100%; background: var(--skin-color); box-shadow: 0 0 15px var(--skin-color); transition: width 0.5s; }
 
         #sphere-wrapper { position: relative; margin-top: 40px; }
         #void-sphere { 
             width: 190px; height: 190px; 
             background: radial-gradient(circle, #1a1a1a 0%, #000 70%); 
-            border-radius: 50%; border: 1px solid #222; 
+            border-radius: 50%; border: 2px solid var(--skin-color); 
             cursor: pointer; display: flex; align-items: center; justify-content: center; 
-            transition: transform 0.1s; 
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 20px rgba(255,255,255,0.05);
         }
         #void-sphere:active { transform: scale(0.92); }
 
@@ -46,18 +31,14 @@
         .label { color: #333; font-size: 0.55rem; letter-spacing: 4px; margin-bottom: 20px; }
 
         .btn-panel { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 95%; margin-top: auto; padding-bottom: 35px; }
-        .ui-btn { 
-            background: #050505; border: 1px solid #151515; color: #aaa; 
-            padding: 12px; border-radius: 10px; flex: 1; 
-            min-width: 80px; text-align: center; cursor: pointer; 
-            font-size: 0.55rem; letter-spacing: 1px; 
-        }
+        .ui-btn { background: #050505; border: 1px solid #151515; color: #aaa; padding: 12px; border-radius: 10px; flex: 1; min-width: 80px; text-align: center; cursor: pointer; font-size: 0.55rem; letter-spacing: 1px; }
         .ui-btn:active { background: #111; color: #fff; }
         .cost { color: #444; display: block; font-size: 0.45rem; margin-top: 4px; }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; padding-top: 60px; text-align: center; }
-        .quest-card { background: #050505; border: 1px solid #111; margin: 8px 20px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
-        .particle { position: fixed; pointer-events: none; background: #fff; border-radius: 50%; z-index: 50; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; padding-top: 60px; text-align: center; overflow-y: auto; }
+        .card { background: #080808; border: 1px solid #111; margin: 8px 20px; padding: 15px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .particle { position: fixed; pointer-events: none; background: var(--skin-color); border-radius: 50%; z-index: 50; }
         @keyframes particle-fly { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--x), var(--y)) scale(0); opacity: 0; } }
         @keyframes flyUp { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-100px); opacity: 0; } }
     </style>
@@ -65,11 +46,7 @@
 <body>
 
     <div id="global-container">GLOBAL REMAINING<span id="global-matter">1000.0000</span></div>
-    
-    <div id="level-info">
-        <span id="player-level">LEVEL 1</span>
-        <span style="color: #444">XP PROGRESS</span>
-    </div>
+    <div id="level-info"><span id="player-level">LEVEL 1</span><span style="color: #444">VOID XP</span></div>
     <div id="level-container"><div id="level-bar"></div></div>
 
     <div id="sphere-wrapper"><div id="void-sphere"></div></div>
@@ -79,8 +56,7 @@
 
     <div class="btn-panel">
         <div class="ui-btn" onclick="toggleModal('leaderboard')">RANK</div>
-        <div class="ui-btn" onclick="buyUpgrade('click')">SHARPEN<span class="cost" id="cost-click">...</span></div>
-        <div class="ui-btn" onclick="buyUpgrade('auto')">PULSE<span class="cost" id="cost-auto">...</span></div>
+        <div class="ui-btn" onclick="toggleModal('shop')">SHOP</div>
         <div class="ui-btn" onclick="toggleModal('rewards')">EARN</div>
     </div>
 
@@ -90,14 +66,36 @@
         <div class="ui-btn" onclick="toggleModal('leaderboard')" style="width: 80px; margin: 40px auto;">BACK</div>
     </div>
 
+    <div id="shop" class="modal">
+        <div style="letter-spacing: 5px; opacity: 0.2; margin-bottom: 20px;">UPGRADES & SKINS</div>
+        <div class="card">
+            <div style="text-align: left;"><div style="font-size: 0.8rem;">Click Sharpen</div><div id="cost-click" style="font-size: 0.5rem; color: #444;">0.0050</div></div>
+            <div class="ui-btn" onclick="buyUpgrade('click')" style="min-width: 60px;">UP</div>
+        </div>
+        <div class="card">
+            <div style="text-align: left;"><div style="font-size: 0.8rem;">Pulse Miner</div><div id="cost-auto" style="font-size: 0.5rem; color: #444;">0.0100</div></div>
+            <div class="ui-btn" onclick="buyUpgrade('auto')" style="min-width: 60px;">UP</div>
+        </div>
+        <div style="margin: 20px; font-size: 0.6rem; color: #333; letter-spacing: 2px;">SKINS</div>
+        <div class="card">
+            <div style="text-align: left;"><div style="font-size: 0.8rem; color: #ffd700;">Gold Skin</div><div style="font-size: 0.5rem; color: #444;">Price: 0.5000 (+5%)</div></div>
+            <div class="ui-btn" id="skin-btn-gold" onclick="manageSkin('gold')" style="min-width: 60px;">BUY</div>
+        </div>
+        <div class="card">
+            <div style="text-align: left;"><div style="font-size: 0.8rem; color: #00ffff;">Plasma Skin</div><div style="font-size: 0.5rem; color: #444;">Price: 2.0000 (+15%)</div></div>
+            <div class="ui-btn" id="skin-btn-plasma" onclick="manageSkin('plasma')" style="min-width: 60px;">BUY</div>
+        </div>
+        <div class="ui-btn" onclick="toggleModal('shop')" style="width: 80px; margin: 20px auto;">BACK</div>
+    </div>
+
     <div id="rewards" class="modal">
         <div style="letter-spacing: 5px; opacity: 0.2; margin-bottom: 30px;">REWARDS</div>
-        <div class="quest-card">
-            <div style="text-align: left;"><div style="font-size: 0.8rem;">Daily Bonus</div><div style="font-size: 0.5rem; color: #444;">Claim matter</div></div>
+        <div class="card">
+            <div style="text-align: left;"><div style="font-size: 0.8rem;">Daily Cycle</div><div style="font-size: 0.5rem; color: #444;">Claim matter</div></div>
             <div class="ui-btn" onclick="claimDaily()" style="min-width: 60px;">CLAIM</div>
         </div>
-        <div class="quest-card">
-            <div style="text-align: left;"><div style="font-size: 0.8rem;">Invite 3 Friends</div><div id="ref-count" style="font-size: 0.5rem; color: #444;">Friends: 0/3</div></div>
+        <div class="card">
+            <div style="text-align: left;"><div style="font-size: 0.8rem;">Expansion</div><div id="ref-count" style="font-size: 0.5rem; color: #444;">Invite 3 friends</div></div>
             <div class="ui-btn" onclick="completeQuest('invite_3')" style="min-width: 60px;">CHECK</div>
         </div>
         <div class="ui-btn" onclick="inviteFriend()" style="width: 80%; margin: 20px auto;">INVITE LINK</div>
@@ -114,51 +112,75 @@
 
         let currentBalance = 0;
         let autoPower = 0;
+        let ownedSkins = [];
+        let activeSkin = 'white';
 
-        function createParticles(x, y) {
-            for (let i = 0; i < 6; i++) {
-                const p = document.createElement('div'); p.className = 'particle';
-                const size = Math.random() * 2 + 1; p.style.width = p.style.height = size + 'px';
-                p.style.left = x + 'px'; p.style.top = y + 'px';
-                const tx = (Math.random() - 0.5) * 140; const ty = (Math.random() - 0.5) * 140;
-                p.style.setProperty('--x', tx + 'px'); p.style.setProperty('--y', ty + 'px');
-                p.style.animation = 'particle-fly 0.6s ease-out forwards';
-                document.body.appendChild(p); setTimeout(() => p.remove(), 600);
-            }
+        const skinColors = { 'white': '#ffffff', 'gold': '#ffd700', 'plasma': '#00ffff' };
+
+        function updateSkinUI(skin) {
+            activeSkin = skin;
+            document.documentElement.style.setProperty('--skin-color', skinColors[skin]);
+            // Обновляем кнопки в магазине
+            ['gold', 'plasma'].forEach(s => {
+                const btn = document.getElementById(`skin-btn-${s}`);
+                if (ownedSkins.includes(s)) {
+                    btn.innerText = (activeSkin === s) ? 'ACTIVE' : 'USE';
+                    btn.style.color = (activeSkin === s) ? '#00ff00' : '#aaa';
+                }
+            });
         }
 
         async function apiRequest(action = 'load') {
-            try {
-                const res = await fetch('/api/click', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, userName, action, referrerId })
-                });
-                const data = await res.json();
-                currentBalance = data.balance;
-                autoPower = data.autoPower || 0;
-                
-                document.getElementById('balance').innerText = currentBalance.toFixed(4);
-                document.getElementById('global-matter').innerText = data.globalMatter.toFixed(4);
-                document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
-                document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
-                document.getElementById('player-level').innerText = `LEVEL ${data.level}`;
-                document.getElementById('ref-count').innerText = `Friends: ${data.referralCount}/3`;
+            const res = await fetch('/api/click', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, userName, action, referrerId })
+            });
+            const data = await res.json();
+            currentBalance = data.balance;
+            autoPower = data.autoPower || 0;
+            ownedSkins = data.ownedSkins || ['white'];
+            
+            document.getElementById('balance').innerText = currentBalance.toFixed(4);
+            document.getElementById('global-matter').innerText = data.globalMatter.toFixed(4);
+            document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
+            document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
+            document.getElementById('player-level').innerText = `LEVEL ${data.level}`;
+            document.getElementById('ref-count').innerText = `Friends: ${data.referralCount}/3`;
 
-                // Прогресс до следующего уровня (0.5 материи на уровень)
-                const xpPerLevel = 0.5;
-                let progress = ((data.totalExtracted % xpPerLevel) / xpPerLevel) * 100;
-                if (progress < 2) progress = 2; // Минимум, чтобы было видно полоску
-                document.getElementById('level-bar').style.width = progress + '%';
-            } catch (e) { console.error(e); }
+            const progress = ((data.totalExtracted % 0.5) / 0.5) * 100;
+            document.getElementById('level-bar').style.width = Math.max(progress, 2) + '%';
+            
+            updateSkinUI(data.currentSkin);
+        }
+
+        async function manageSkin(skinId) {
+            const action = ownedSkins.includes(skinId) ? 'use' : 'buy';
+            const res = await fetch('/api/skin', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, skinId, action })
+            });
+            const data = await res.json();
+            if (data.success) {
+                ownedSkins = data.ownedSkins;
+                updateSkinUI(data.currentSkin);
+                if (action === 'buy') apiRequest('load');
+            } else tg.showAlert("Need more matter or error");
         }
 
         document.getElementById('void-sphere').onclick = (e) => {
-            createParticles(e.clientX, e.clientY);
+            for (let i = 0; i < 6; i++) {
+                const p = document.createElement('div'); p.className = 'particle';
+                p.style.width = p.style.height = (Math.random() * 2 + 1) + 'px';
+                p.style.left = e.clientX + 'px'; p.style.top = e.clientY + 'px';
+                p.style.setProperty('--x', ((Math.random() - 0.5) * 140) + 'px');
+                p.style.setProperty('--y', ((Math.random() - 0.5) * 140) + 'px');
+                p.style.animation = 'particle-fly 0.6s ease-out forwards';
+                document.body.appendChild(p); setTimeout(() => p.remove(), 600);
+            }
             const flyText = document.createElement('div');
             flyText.innerText = '+'; flyText.style.position = 'fixed';
             flyText.style.left = e.clientX + 'px'; flyText.style.top = e.clientY + 'px';
-            flyText.style.color = '#fff'; flyText.style.animation = 'flyUp 1s forwards';
+            flyText.style.color = skinColors[activeSkin]; flyText.style.animation = 'flyUp 1s forwards';
             document.body.appendChild(flyText); setTimeout(() => flyText.remove(), 1000);
 
             tg.HapticFeedback.impactOccurred('light');
@@ -167,6 +189,7 @@
             apiRequest('click');
         };
 
+        // Вспомогательные функции (замени только buyUpgrade на эту версию)
         async function buyUpgrade(type) {
             const res = await fetch('/api/upgrade', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -174,7 +197,7 @@
             });
             const data = await res.json();
             if (data.success) { tg.HapticFeedback.notificationOccurred('success'); apiRequest('load'); }
-            else tg.showAlert(data.message);
+            else tg.showAlert("Need more matter");
         }
 
         function toggleModal(id) {
@@ -199,7 +222,7 @@
                 body: JSON.stringify({ userId })
             });
             const data = await res.json();
-            if (data.success) { tg.showAlert(`Claimed +${data.amount.toFixed(4)}!`); apiRequest('load'); }
+            if (data.success) { tg.showAlert(`Claimed bonus!`); apiRequest('load'); }
             else tg.showAlert(data.message);
         }
 
@@ -210,14 +233,13 @@
             });
             const data = await res.json();
             if (data.success) { tg.showAlert('Quest completed!'); apiRequest('load'); }
-            else tg.showAlert(data.message);
+            else tg.showAlert("Not yet");
         }
 
         function inviteFriend() {
-            const botUsername = 'void_clicker_bot'; // <--- ЗАМЕНИ НА СВОЕГО БОТА
+            const botUsername = 'void_clicker_bot'; 
             const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
-            const fullUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join the Void!')}`;
-            tg.openTelegramLink(fullUrl);
+            tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Extract the Void!')}`);
         }
 
         setInterval(() => { if (autoPower > 0) { currentBalance += autoPower; document.getElementById('balance').innerText = currentBalance.toFixed(4); } }, 1000);
