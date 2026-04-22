@@ -7,25 +7,51 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root { --main-color: #fff; --bg-color: #000; }
-        body { background: var(--bg-color); color: var(--main-color); margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { 
+            background: var(--bg-color); color: var(--main-color); margin: 0; 
+            display: flex; flex-direction: column; align-items: center; 
+            height: 100vh; font-family: -apple-system, system-ui, sans-serif; 
+            overflow: hidden; user-select: none; -webkit-tap-highlight-color: transparent; 
+        }
         
         #global-container { margin-top: 30px; text-align: center; opacity: 0.4; letter-spacing: 2px; font-size: 0.6rem; }
         #global-matter { display: block; font-size: 0.75rem; margin-top: 4px; }
 
-        /* УЛУЧШЕННЫЙ ПРОГРЕСС БАР */
+        /* Прогресс бар уровня */
         #level-info { width: 85%; display: flex; justify-content: space-between; margin-top: 25px; font-size: 0.65rem; font-weight: bold; color: #888; }
-        #level-container { width: 85%; height: 6px; background: #111; margin-top: 8px; border-radius: 10px; border: 1px solid #222; overflow: hidden; }
-        #level-bar { width: 0%; height: 100%; background: #fff; box-shadow: 0 0 15px #fff; transition: width 0.5s ease; }
+        #level-container { 
+            width: 85%; height: 8px; background: #111; 
+            margin-top: 8px; border-radius: 10px; 
+            border: 1px solid #222; overflow: hidden; 
+            position: relative;
+        }
+        #level-bar { 
+            width: 2%; /* Минимум 2%, чтобы было видно полоску всегда */
+            height: 100%; background: #fff; 
+            box-shadow: 0 0 15px #fff; 
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
 
         #sphere-wrapper { position: relative; margin-top: 40px; }
-        #void-sphere { width: 190px; height: 190px; background: radial-gradient(circle, #1a1a1a 0%, #000 70%); border-radius: 50%; border: 1px solid #222; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; }
+        #void-sphere { 
+            width: 190px; height: 190px; 
+            background: radial-gradient(circle, #1a1a1a 0%, #000 70%); 
+            border-radius: 50%; border: 1px solid #222; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; 
+            transition: transform 0.1s; 
+        }
         #void-sphere:active { transform: scale(0.92); }
 
         #balance { font-size: 3rem; margin-top: 25px; font-weight: 200; font-variant-numeric: tabular-nums; }
         .label { color: #333; font-size: 0.55rem; letter-spacing: 4px; margin-bottom: 20px; }
 
         .btn-panel { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 95%; margin-top: auto; padding-bottom: 35px; }
-        .ui-btn { background: #050505; border: 1px solid #151515; color: #aaa; padding: 12px; border-radius: 10px; flex: 1; min-width: 80px; text-align: center; cursor: pointer; font-size: 0.55rem; }
+        .ui-btn { 
+            background: #050505; border: 1px solid #151515; color: #aaa; 
+            padding: 12px; border-radius: 10px; flex: 1; 
+            min-width: 80px; text-align: center; cursor: pointer; 
+            font-size: 0.55rem; letter-spacing: 1px; 
+        }
         .ui-btn:active { background: #111; color: #fff; }
         .cost { color: #444; display: block; font-size: 0.45rem; margin-top: 4px; }
 
@@ -58,7 +84,6 @@
         <div class="ui-btn" onclick="toggleModal('rewards')">EARN</div>
     </div>
 
-    <!-- Модальные окна (без изменений) -->
     <div id="leaderboard" class="modal">
         <div style="letter-spacing: 5px; opacity: 0.2; margin-bottom: 30px;">RANKINGS</div>
         <div id="leader-list"></div>
@@ -72,7 +97,7 @@
             <div class="ui-btn" onclick="claimDaily()" style="min-width: 60px;">CLAIM</div>
         </div>
         <div class="quest-card">
-            <div style="text-align: left;"><div style="font-size: 0.8rem;">Expansion</div><div id="ref-count" style="font-size: 0.5rem; color: #444;">Invite 3 friends</div></div>
+            <div style="text-align: left;"><div style="font-size: 0.8rem;">Invite 3 Friends</div><div id="ref-count" style="font-size: 0.5rem; color: #444;">Friends: 0/3</div></div>
             <div class="ui-btn" onclick="completeQuest('invite_3')" style="min-width: 60px;">CHECK</div>
         </div>
         <div class="ui-btn" onclick="inviteFriend()" style="width: 80%; margin: 20px auto;">INVITE LINK</div>
@@ -118,10 +143,12 @@
                 document.getElementById('cost-click').innerText = data.nextClickCost.toFixed(4);
                 document.getElementById('cost-auto').innerText = data.nextAutoCost.toFixed(4);
                 document.getElementById('player-level').innerText = `LEVEL ${data.level}`;
+                document.getElementById('ref-count').innerText = `Friends: ${data.referralCount}/3`;
 
-                // ИСПРАВЛЕННЫЙ РАСЧЕТ ПРОГРЕСС-БАРА (каждые 0.5 материи)
+                // Прогресс до следующего уровня (0.5 материи на уровень)
                 const xpPerLevel = 0.5;
-                const progress = ((data.totalExtracted % xpPerLevel) / xpPerLevel) * 100;
+                let progress = ((data.totalExtracted % xpPerLevel) / xpPerLevel) * 100;
+                if (progress < 2) progress = 2; // Минимум, чтобы было видно полоску
                 document.getElementById('level-bar').style.width = progress + '%';
             } catch (e) { console.error(e); }
         }
@@ -187,9 +214,9 @@
         }
 
         function inviteFriend() {
-            const botUsername = 'void_clicker_bot'; 
+            const botUsername = 'void_clicker_bot'; // <--- ЗАМЕНИ НА СВОЕГО БОТА
             const inviteLink = `https://t.me/${botUsername}?start=${userId}`;
-            const fullUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join the Void extraction!')}`;
+            const fullUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent('Join the Void!')}`;
             tg.openTelegramLink(fullUrl);
         }
 
